@@ -11,20 +11,19 @@ static void ccdis_glob(FILE *ofp, const cintcode_op *opent, uint16_t globno) {
 void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index)
 {
     int new_labels;
-    uint16_t bytepos, dest;
-    unsigned b1, b2, b3;
-    const cintcode_op *opent;
 
     // First scan through the intructions and find the jump destinations
 
     do {
         new_labels = 0;
-        for (bytepos = 0; bytepos < code_size; bytepos++) {
+        for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
             if (glob_index[bytepos] >= 0 && glob_index[bytepos] != 0x2000) {
+                const cintcode_op *opent;
                 fprintf(ofp, "%04X: starting at global #%u\n", bytepos, glob_index[bytepos]);
                 do {
-                    b1 = content[bytepos++];
-                    opent = cintcode_ops + b1;
+                    uint16_t dest;
+                    unsigned b2, b3;
+                    opent = cintcode_ops + content[bytepos++];
                     fprintf(ofp, "%s am %d it %d\n", opent->mnemonic, opent->cc_am, opent->cc_it);
                     switch(opent->cc_am) {
                         case CAM_BREL:
@@ -76,11 +75,14 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
 
     // Now go back and disassemble properly.
 
-    for (bytepos = 0; bytepos < code_size; bytepos++) {
+    for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
         if (glob_index[bytepos] >= 0 && glob_index[bytepos] != 0x2000) {
+            const cintcode_op *opent;
             do {
-                b2 = b3 = 0;
-                b1 = content[bytepos];
+                uint16_t dest;
+                unsigned b1 = content[bytepos];
+                unsigned b2 = 0;
+                unsigned b3 = 0;
                 opent = cintcode_ops + b1;
                 switch(opent->cc_am) {
                     case CAM_IMP:

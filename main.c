@@ -18,32 +18,30 @@ static const unsigned char *ccdir(FILE *ofp, const unsigned char *start, const c
 static void one_hunk(FILE *ofp, const unsigned char *content, size_t size,
                      void (*dis)(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index))
 {
-    const unsigned char *gend, *gptr, *code_end, *dptr;
-    uint16_t code_size, bytepos, data;
-    int16_t *glob_index, *glob_ptr, *glob_end, globno;
-
     // Search backwards from the end to find the zero marker
     // that separates the code from the list of globals.
 
-    gptr = gend = content + size;
+    const unsigned char *gend = content + size;
+    const unsigned char *gptr = gend;
     do
         gptr -= 4;
     while (gptr > content && (gptr[0] || gptr[1]));
-    code_end = gptr;
-    code_size = code_end - content;
+    const unsigned char *code_end = gptr;
+    uint16_t code_size = code_end - content;
 
     // Allocate and populate an index for the code space that indicates
     // for any address which global, if any, points there.
 
-    if ((glob_index = malloc(code_size * sizeof(uint16_t)))) {
-        glob_ptr = glob_index;
-        glob_end = glob_index + code_size;
+    int16_t *glob_index = malloc(code_size * sizeof(uint16_t));
+    if (glob_index) {
+        int16_t *glob_ptr = glob_index;
+        int16_t *glob_end = glob_index + code_size;
         while (glob_ptr < glob_end)
             *glob_ptr++ = 0xffff;
         for (gptr += 2, gend -= 2; gptr < gend; ) {
-            globno = *gptr++;
+            int16_t globno = *gptr++;
             globno |= (*gptr++) << 8;
-            bytepos = *gptr++;
+            uint16_t bytepos = *gptr++;
             bytepos |= (*gptr++) << 8;
             printf("global %d -> %04X\n", globno, bytepos);
             if (bytepos < code_size)
@@ -52,8 +50,8 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size,
 
         // Work forwards, printing section/needs/proc names.
 
-        for (dptr = content;;) {
-            data = *dptr++;
+        for (const unsigned char *dptr = content;;) {
+            uint16_t data = *dptr++;
             data |= (*dptr++) << 8;
             if (data == 0xfddf)
                 dptr = ccdir(ofp, dptr, "SECTION");
@@ -76,19 +74,18 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size,
 
 static void do_hunks(FILE *ofp, const unsigned char *content, size_t size)
 {
-    unsigned addr, naddr, hunk, hlen, blen, ilen;
+    unsigned addr = 0;
 
-    addr = 0;
     while (size >= 2) {
-        hunk = *content++;
+        unsigned hunk = *content++;
         hunk |= (*content++) << 8;
         if (hunk == 992 || size < 4)
             break;
-        hlen = *content++;
+        unsigned hlen = *content++;
         hlen |= (*content++) << 8;
-        blen = hlen << 1;
-        ilen = blen + 4;
-        naddr = addr + ilen;
+        unsigned blen = hlen << 1;
+        unsigned ilen = blen + 4;
+        unsigned naddr = addr + ilen;
         switch(hunk) {
             case 1000:
                 fprintf(ofp, "found CINTCODE hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
@@ -111,28 +108,25 @@ static void do_hunks(FILE *ofp, const unsigned char *content, size_t size)
 }
 
 static void do_simple(const unsigned char *content, size_t size, const char *arg) {
-    unsigned start;
-
-    start = strtoul(arg, NULL, 0);
+    unsigned start = strtoul(arg, NULL, 0);
     ccdis(stdout, content + start, size - start, NULL);
 }
-        
+
 int main(int argc, char **argv) {
-    int status, fd;
-    char *filename;
-    unsigned char *content;
-    size_t size;
-    struct stat stb;
+    int status;
 
     if (argc < 2 || argc > 3) {
         fputs("Usage: ccdis <file> [ <start> ]\n", stderr);
         status = 1;
     } else {
-        filename = argv[1];
-        if ((fd = open(argv[1], O_RDONLY)) >= 0) {
+        const char *filename = argv[1];
+        int fd = open(filename, O_RDONLY);
+        if (fd >= 0) {
+            struct stat stb;
             if (fstat(fd, &stb) == 0) {
-                size = stb.st_size;
-                if ((content = malloc(size))) {
+                size_t size = stb.st_size;
+                unsigned char *content = malloc(size);
+                if (content) {
                     if (read(fd, content, size) == size) {
                         close(fd);
                         fprintf(stderr, "ccdis: read file %s, %lu bytes\n", filename, size);

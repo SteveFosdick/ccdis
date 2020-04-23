@@ -46,7 +46,7 @@ static const char op_names[113][4] = {
     "WDM", "XBA", "XCE"
 };
 
-static int8_t op_cmos[256] =
+static const int8_t op_cmos[256] =
 {
 /*       0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F */
 /*00*/  BRK,  ORA,  UND,  UND,  TSB,  ORA,  ASL,  UND,  PHP,  ORA,  ASL,  UND,  TSB,  ORA,  ASL,  UND,
@@ -67,7 +67,7 @@ static int8_t op_cmos[256] =
 /*F0*/  BEQ,  SBC,  SBC,  UND,  UND,  SBC,  INC,  UND,  SED,  SBC,  PLX,  UND,  UND,  SBC,  INC,  UND,
  };
 
-static uint8_t am_cmos[256]=
+static const uint8_t am_cmos[256]=
 {
 /*       0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F */
 /*00*/  IMP,  INDX, IMP,  IMP,  ZP,   ZP,   ZP,   IMP,  IMP,  IMM,  IMPA, IMP,  ABS,  ABS,  ABS,  IMP,
@@ -90,11 +90,10 @@ static uint8_t am_cmos[256]=
 
 static void prt_bytes(FILE *ofp, const unsigned char *content, uint32_t addr)
 {
-    uint8_t op, p1, p2;
-    addr_mode_t addr_mode;
-    
-    op = content[addr];
-    addr_mode = am_cmos[op];
+    uint8_t p1, p2;
+
+    uint8_t op = content[addr];
+    addr_mode_t addr_mode = am_cmos[op];
 
     switch (addr_mode)
     {
@@ -126,15 +125,13 @@ static void prt_bytes(FILE *ofp, const unsigned char *content, uint32_t addr)
 
 static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t addr)
 {
-    uint8_t op, ni, p1, p2;
+    uint8_t p1, p2;
     uint16_t temp;
-    const char *op_name;
-    addr_mode_t addr_mode;
 
-    op = content[addr++];
-    ni = op_cmos[op];
-    addr_mode = am_cmos[op];
-    op_name = op_names[ni];
+    uint8_t op = content[addr++];
+    uint8_t ni = op_cmos[op];
+    addr_mode_t addr_mode = am_cmos[op];
+    const char *op_name = op_names[ni];
 
     switch (addr_mode)
     {
@@ -209,26 +206,26 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t 
 
 void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index)
 {
-    int new_labels, ujump, i, r;
-    uint16_t bytepos, dest;
-    int16_t glob;
-    unsigned b1, b2, b3;
+    int new_labels;
 
     // First scan through the intructions and find the jump destinations
 
     do {
         new_labels = 0;
-        dest = code_size;
-        for (bytepos = 0; bytepos < code_size; bytepos++) {
-            glob = glob_index[bytepos];
+        uint16_t dest = code_size;
+        for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
+            int16_t glob = glob_index[bytepos];
             if (glob >= 0 && glob != 0x2000) {
                 if (glob == 0x4000)
                     fprintf(ofp, "%04X: starting at local dest\n", bytepos);
                 else
                     fprintf(ofp, "%04X: starting at global #%u\n", bytepos, glob);
-                ujump = 0;
+                int ujump = 0;
                 do {
-                    if ((b1 = content[++bytepos]) == 0xdf)
+                    int r;
+                    unsigned b2, b3;
+                    unsigned b1 = content[++bytepos];
+                    if (b1 == 0xdf)
                         break;
                     switch(am_cmos[b1]) {
                         case IMP:
@@ -278,8 +275,10 @@ void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
         fprintf(ofp, "found %d new jump destinations\n", new_labels);
     } while (new_labels > 0);
 
-    for (bytepos = 0; bytepos < code_size; bytepos++) {
-        glob = glob_index[bytepos];
+    // Now go back and disassemble properly.
+
+    for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
+        int16_t glob = glob_index[bytepos];
         if (glob >= 0 && glob != 0x2000) {
             do {
                 fprintf(ofp, "%04X ", bytepos);
@@ -291,20 +290,20 @@ void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                     }
                     else if (glob == 0x2000) {
                         fprintf(ofp, " D%04X: ", bytepos);
-                        for (i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
+                        for (int i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
                             fprintf(ofp, "%02X ", content[bytepos++]);
                             glob = glob_index[bytepos];
                         }
                         while (!glob || glob == 0x2000) {
                             fprintf(ofp, "%04X         ", bytepos);
-                            for (i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
+                            for (int i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
                                 fprintf(ofp, "%02X ", content[bytepos++]);
                                 glob = glob_index[bytepos];
                             }
                         }
                     }
                     else {
-                        b1 = content[bytepos++];
+                        unsigned b1 = content[bytepos++];
                         fprintf(ofp, "%02X        G%03d:  EQUB %02X\n", b1, glob, b1);
                     }
                 }
