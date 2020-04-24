@@ -81,9 +81,8 @@ static void do_hunks(FILE *ofp, const unsigned char *content, size_t size)
         hunk |= (*content++) << 8;
         if (hunk == 992 || size < 4)
             break;
-        unsigned hlen = *content++;
-        hlen |= (*content++) << 8;
-        unsigned blen = hlen << 1;
+        unsigned blen = *content++ << 1;
+        blen |= (*content++) << 9;
         unsigned ilen = blen + 4;
         unsigned naddr = addr + ilen;
         switch(hunk) {

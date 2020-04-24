@@ -9,7 +9,7 @@
 const cintcode_op cintcode_ops[256] = {
     /* 00 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
     /* 01 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* 02 */ { "BRK",   CAM_IMP,  CIT_OTHR }, /* 826A */
+    /* 02 */ { "BRK",   CAM_IMP,  CIT_UJMP }, /* 826A */
     /* 03 */ { "K3",    CAM_IMP,  CIT_CALL }, /* 82F2 */
     /* 04 */ { "K4",    CAM_IMP,  CIT_CALL }, /* 82F2 */
     /* 05 */ { "K5",    CAM_IMP,  CIT_CALL }, /* 82F2 */
@@ -153,8 +153,8 @@ const cintcode_op cintcode_ops[256] = {
     /* 8F */ { "LP15",  CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 90 */ { "LP16",  CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 91 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 865E */
-    /* 92 */ { "SWB",   CAM_IMP,  CIT_OTHR }, /* 84C3 */
-    /* 93 */ { "SWL",   CAM_IMP,  CIT_OTHR }, /* 84F5 */
+    /* 92 */ { "SWB",   CAM_SWB,  CIT_UJMP }, /* 84C3 */
+    /* 93 */ { "SWL",   CAM_SWL,  CIT_OTHR }, /* 84F5 */
     /* 94 */ { "ST",    CAM_IMP,  CIT_OTHR }, /* 85A1 */
     /* 95 */ { "ST1",   CAM_IMP,  CIT_OTHR }, /* 85A1 */
     /* 96 */ { "ST2",   CAM_IMP,  CIT_OTHR }, /* 85A1 */
