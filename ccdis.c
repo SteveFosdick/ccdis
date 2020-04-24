@@ -67,7 +67,7 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                                 glob_index[dest] = GLOB_DATA;
                                 b2 = content[dest++];
                                 b3 = content[dest];
-                                dest = (dest + (b2 | (b3 << 8))) & 0xffff;
+                                dest = (dest + (b2 | (b3 << 8))) & 0xfffe;
                                 printf("final address = %04X\n", dest);
                             } else
                                 dest = 0xffff;
