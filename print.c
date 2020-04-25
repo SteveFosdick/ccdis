@@ -52,6 +52,6 @@ uint16_t print_data(FILE *ofp, const unsigned char *content, uint16_t code_size,
         *aptr++ = '\n';
         fwrite(line, aptr-line, 1, ofp);
     }
-    while (glob_index[addr] < 0);
+    while (addr < code_size && glob_index[addr] < 0);
     return addr;
 }
