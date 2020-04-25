@@ -323,8 +323,8 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                             break;
                     }
                 } while (opent->cc_it != CIT_RETN && opent->cc_it != CIT_UJMP);
-                bytepos--;
             }
+            bytepos--;
         }
     }
 }
