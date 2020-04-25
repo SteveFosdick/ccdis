@@ -15,9 +15,6 @@ extern uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size,
 extern uint16_t mc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr);
 extern uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr);
 
-extern void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index);
-extern void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index);
-
 extern void print_label(FILE *ofp, int16_t *glob_index, uint16_t addr);
 extern uint16_t print_data(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index, uint16_t addr);
 
