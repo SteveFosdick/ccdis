@@ -2,8 +2,8 @@
 #include "cintcode_tabs.h"
 
 static void ccdis_glob(FILE *ofp, const cintcode_op *opent, uint16_t globno) {
-    if (globno < CINTCODE_NGLOB && cintocde_globs[globno])
-        fprintf(ofp, "%-7s %d (%s)\n", opent->mnemonic, globno, cintocde_globs[globno]);
+    if (globno < CINTCODE_NGLOB && *cintocde_globs[globno].name)
+        fprintf(ofp, "%-7s %d (%s)\n", opent->mnemonic, globno, cintocde_globs[globno].name);
     else
         fprintf(ofp, "%-7s %d\n", opent->mnemonic, globno);
 }
@@ -16,8 +16,8 @@ static void print_dest_addr(FILE *ofp, int16_t *glob_index, uint16_t addr)
             fprintf(ofp, "L%04X\n", addr);
         else if (glob == GLOB_DATA)
             fprintf(ofp, "D%04X\n", addr);
-        else if (glob < CINTCODE_NGLOB && cintocde_globs[glob][0])
-            fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob], glob);
+        else if (glob < CINTCODE_NGLOB && *cintocde_globs[glob].name)
+            fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob].name, glob);
         else
             fprintf(ofp, "G%03d\n", glob);
     }

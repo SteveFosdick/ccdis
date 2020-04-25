@@ -9,8 +9,8 @@ void print_label(FILE *ofp, int16_t *glob_index, uint16_t addr)
             fprintf(ofp, "     L%04X: ", addr);
         else if (glob == GLOB_DATA)
             fprintf(ofp, "     D%04X: ", addr);
-        else if (glob < CINTCODE_NGLOB && cintocde_globs[glob][0])
-            fprintf(ofp, " %9.9s: ", cintocde_globs[glob]);
+        else if (glob < CINTCODE_NGLOB && *cintocde_globs[glob].name)
+            fprintf(ofp, " %9.9s: ", cintocde_globs[glob].name);
         else
             fprintf(ofp, "      G%03d: ", glob);
     }

@@ -48,8 +48,13 @@ extern const cintcode_op cintcode_ops[256];
 
 /* Table of CINTCODE globals (Global Vector) */
 
+typedef struct {
+    uint16_t romaddr;
+    char     name[13];
+} citcode_glob;
+
 #define CINTCODE_NGLOB 220
 
-extern const char cintocde_globs[CINTCODE_NGLOB][13];
+extern const citcode_glob cintocde_globs[CINTCODE_NGLOB];
 
 #endif
