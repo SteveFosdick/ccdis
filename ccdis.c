@@ -154,11 +154,11 @@ uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, 
         opent = cintcode_ops + b1;
         switch(opent->cc_am) {
             case CAM_IMP:
-                fprintf(ofp, "%04X: %02X      ", oppos, b1);
+                fprintf(ofp, "%04X: %02X       ", oppos, b1);
                 break;
             case CAM_SWB:
             case CAM_SWL:
-                fprintf(ofp, "%04X: %02X ...  ", oppos, b1);
+                fprintf(ofp, "%04X: %02X ...   ", oppos, b1);
                 break;
             case CAM_BYTE:
             case CAM_BREL:
@@ -168,14 +168,14 @@ uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, 
             case CAM_GLB2:
                 if (addr < size) {
                     b2 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X   ", oppos, b1, b2);
+                    fprintf(ofp, "%04X: %02X %02X    ", oppos, b1, b2);
                 }
                 break;
             case CAM_WORD:
                 if ((addr + 1) < size) {
                     b2 = content[addr++];
                     b3 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X %02X", addr, b1, b2, b3);
+                    fprintf(ofp, "%04X: %02X %02X %02X ", addr, b1, b2, b3);
                 }
         }
 
