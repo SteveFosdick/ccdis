@@ -26,9 +26,9 @@ static void disassemble(FILE *ofp, const unsigned char *content, size_t size, in
             if (glob < 0 || glob == GLOB_DATA)
                 addr++;
             else if (glob == GLOB_MC6502)
-                addr = mc_trace(ofp, content, size, glob_index, addr, &new_labels);
+                addr = mc_trace(content, size, glob_index, addr, &new_labels);
             else
-                addr = cc_trace(ofp, content, size, glob_index, addr, &new_labels);
+                addr = cc_trace(content, size, glob_index, addr, &new_labels);
         }
     }
     while (new_labels > 0);
@@ -75,7 +75,6 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
             globno |= (*gptr++) << 8;
             uint16_t bytepos = *gptr++;
             bytepos |= (*gptr++) << 8;
-            printf("global %d -> %04X\n", globno, bytepos);
             if (bytepos < code_size)
                 glob_index[bytepos] = globno;
         }

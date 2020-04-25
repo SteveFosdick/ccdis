@@ -88,7 +88,7 @@ static const uint8_t am_cmos[256]=
 /*F0*/  PCR,  INDY, IND,  IMP,  ZP,   ZPX,  ZPX,  IMP,  IMP,  ABSY, IMP,  IMP,  ABS,  ABSX, ABSX, IMP,
 };
 
-uint16_t mc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
+uint16_t mc_trace(const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
 {
     int ujump = 0;
     do {
@@ -128,7 +128,6 @@ uint16_t mc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
             case PCR:
                 r = *(signed char *)(content + addr);
                 dest = addr + r;
-                fprintf(ofp, "%04X: relative jump %d to %04X\n", addr, r, dest);
                 if (b1 == 0x80)
                     ujump = 1;
         }

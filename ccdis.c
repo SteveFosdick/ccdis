@@ -1,18 +1,16 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
+uint16_t cc_trace(const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
 {
     const cintcode_op *opent;
 
     do {
         uint16_t dest;
         unsigned b2, b3;
-        unsigned b1 = content[addr];
+        unsigned b1 = content[addr++];
         opent = cintcode_ops + b1;
-        fprintf(ofp, "%04X: %02X %-5s\n", addr++, b1, opent->mnemonic);
         if (opent->cc_it == CIT_MCOD) {
-            fputs("switching to MC\n", ofp);
             glob_index[addr] = GLOB_MC6502;
             return addr;
         }
@@ -28,13 +26,11 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                     return addr;
                 b2 = content[addr++];
                 dest = (addr + ((b2<<1)|1)) & 0xfffe;
-                printf("indirect address = %04X\n", dest);
                 if (dest < size) {
                     glob_index[dest] = GLOB_DATA;
                     b2 = content[dest++];
                     b3 = content[dest];
                     dest = (dest + (b2 | (b3 << 8))) & 0xfffe;
-                    printf("final address = %04X\n", dest);
                 } else
                     dest = 0xffff;
                 break;
@@ -52,26 +48,20 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                 dest = size;
                 if ((size - addr) >= 4) {
                     uint16_t pos = (addr + 1 ) & 0xfffe;
-                    printf("swb word address=%04X\n", pos);
                     b2 = content[pos++];
                     b3 = content[pos++];
                     uint16_t entries = b2 | (b3 << 8);
-                    printf("switch with %d entries\n", entries);
                     addr = pos + entries * 2;
                     if (addr < size) {
                         b2 = content[pos++];
                         b3 = content[pos++];
                         dest = pos + (b2 | (b3 << 8)) - 2;
-                        printf("default address=%04X\n", dest);
                         while (entries--) {
-                            b2 = content[pos++];
-                            b3 = content[pos++];
-                            uint16_t w1 = (b2 | (b3 << 8));
+                            pos += 2;
                             b2 = content[pos++];
                             b3 = content[pos++];
                             uint16_t w2 = (b2 | (b3 << 8));
                             uint16_t sdest = pos + w2 - 2;
-                            printf("switch entry A=%04X, O=%04X, dest=%04X\n", w1, w2, sdest);
                             int16_t glob = glob_index[sdest];
                             if (glob < 0 || glob == GLOB_DATA) {
                                 glob_index[sdest] = GLOB_CINTCODE;
@@ -85,22 +75,17 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                 dest = size;
                 if ((size - addr) >= 6) {
                     uint16_t pos = (addr + 1 ) & 0xfffe;
-                    printf("swb word address=%04X\n", pos);
                     b2 = content[pos++];
                     b3 = content[pos++];
                     uint16_t entries = (b2 | (b3 << 8));
                     b2 = content[pos++];
                     b3 = content[pos++];
                     uint16_t addr = pos + (b2 | (b3 << 8)) - 2;
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    uint16_t low = (b2 | (b3 << 8));
-                    printf("range switch %d entries, low=%d, addr=%04X\n", entries, low, addr);
+                    pos += 2;
                     while (entries--) {
                         b2 = content[pos++];
                         b3 = content[pos++];
                         addr = pos + (b2 | (b3 << 8)) - 2;
-                        printf("%04X: range switch entry addr=%04X\n", pos, addr);
                         int16_t glob = glob_index[addr];
                         if (glob < 0 || glob == GLOB_DATA) {
                             glob_index[addr] = GLOB_CINTCODE;
@@ -116,7 +101,6 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
             switch (opent->cc_it) {
                 case CIT_CJMP:
                 case CIT_UJMP:
-                    fprintf(ofp, "jump to %04X\n", dest);
                     if (glob < 0 || glob == GLOB_DATA) {
                         glob_index[dest] = GLOB_CINTCODE;
                         (*new_labels)++;
