@@ -15,8 +15,42 @@ static const unsigned char *ccdir(FILE *ofp, const unsigned char *start, const c
     return start + 8;
 }
 
-static void one_hunk(FILE *ofp, const unsigned char *content, size_t size,
-                     void (*dis)(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index))
+static void disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index)
+{
+    int new_labels;
+
+    // First scan through the intructions and find the jump destinations
+
+    do {
+        new_labels = 0;
+        for (uint16_t addr = 0; addr < size; ) {
+            int16_t glob = glob_index[addr];
+            if (glob < 0 || glob == GLOB_DATA)
+                addr++;
+            else if (glob == GLOB_MC6502)
+                addr = mc_trace(ofp, content, size, glob_index, addr, &new_labels);
+            else
+                addr = cc_trace(ofp, content, size, glob_index, addr, &new_labels);
+        }
+    }
+    while (new_labels > 0);
+
+    // Now go back and disassemble */
+
+    for (uint16_t addr = 0; addr < size; ) {
+        int16_t glob = glob_index[addr];
+        if (glob < 0)
+            addr++;
+        else if (glob == GLOB_DATA)
+            addr = print_data(ofp, content, size, glob_index, addr);
+        else if (glob == GLOB_MC6502)
+            addr = mc_disassemble(ofp, content, size, glob_index, addr);
+        else
+            addr = cc_disassemble(ofp, content, size, glob_index, addr);
+    }
+}
+
+static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
 {
     // Search backwards from the end to find the zero marker
     // that separates the code from the list of globals.
@@ -63,9 +97,9 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size,
                 break;
         }
 
-        // Disassemble the code using the passed-in callback.
+        // Disassemble the code.
 
-        dis(ofp, content, code_size, glob_index);
+        disassemble(ofp, content, code_size, glob_index);
         free(glob_index);
     }
     else
@@ -88,11 +122,11 @@ static void do_hunks(FILE *ofp, const unsigned char *content, size_t size)
         switch(hunk) {
             case 1000:
                 fprintf(ofp, "found CINTCODE hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
-                one_hunk(ofp, content, blen, ccdis);
+                one_hunk(ofp, content, blen);
                 break;
             case 1001:
                 fprintf(ofp, "found MC hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
-                one_hunk(ofp, content, blen, mcdis);
+                one_hunk(ofp, content, blen);
                 break;
             case 1002:
                 fprintf(ofp, "found relocation hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
@@ -113,8 +147,8 @@ static void do_simple(const unsigned char *content, size_t size, const char *arg
         int16_t *glob_index = malloc(ix_bytes);
         if (glob_index) {
             memset(glob_index, 0xff, ix_bytes);
-            glob_index[start] = GLOB_JUMP;
-            ccdis(stdout, content, size, glob_index);
+            glob_index[start] = GLOB_CINTCODE;
+            disassemble(stdout, content, size, glob_index);
             free(glob_index);
         }
         else

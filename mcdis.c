@@ -88,6 +88,60 @@ static const uint8_t am_cmos[256]=
 /*F0*/  PCR,  INDY, IND,  IMP,  ZP,   ZPX,  ZPX,  IMP,  IMP,  ABSY, IMP,  IMP,  ABS,  ABSX, ABSX, IMP,
 };
 
+uint16_t mc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
+{
+    int ujump = 0;
+    do {
+        uint16_t dest = size;
+        int r;
+        unsigned b2, b3;
+        unsigned b1 = content[addr++];
+        if (b1 == 0xdf)
+            break;
+        switch(am_cmos[b1]) {
+            case IMP:
+                if (b1 == 0x60)
+                    ujump = 1;
+            case IMPA:
+                break;
+            case IMM:
+            case ZP:
+            case ZPX:
+            case ZPY:
+            case INDX:
+            case INDY:
+            case IND:
+                addr++;
+                break;
+            case ABSX:
+            case ABSY:
+            case IND16:
+            case IND1X:
+                addr += 2;
+                break;
+            case ABS:
+                b2 = content[addr++];
+                b3 = content[addr++];
+                if (b1 == 0x4c)
+                    dest = (b3 << 8) | b2;
+                break;
+            case PCR:
+                r = *(signed char *)(content + addr);
+                dest = addr + r;
+                fprintf(ofp, "%04X: relative jump %d to %04X\n", addr, r, dest);
+                if (b1 == 0x80)
+                    ujump = 1;
+        }
+        if (dest < size && glob_index[dest] == -1) {
+            glob_index[dest] = GLOB_MC6502;
+            (*new_labels)++;
+        }
+    }
+    while (!ujump);
+
+    return addr;
+}
+
 static void prt_bytes(FILE *ofp, const unsigned char *content, uint32_t addr)
 {
     uint8_t p1, p2;
@@ -204,108 +258,17 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t 
     return addr;
 }
 
-void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t *glob_index)
+uint16_t mc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr)
 {
-    int new_labels;
-
-    // First scan through the intructions and find the jump destinations
+    int16_t glob;
 
     do {
-        new_labels = 0;
-        uint16_t dest = code_size;
-        for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
-            int16_t glob = glob_index[bytepos];
-            if (glob >= 0 && glob != GLOB_DATA) {
-                if (glob == GLOB_JUMP)
-                    fprintf(ofp, "%04X: starting at local dest\n", bytepos);
-                else
-                    fprintf(ofp, "%04X: starting at global #%u\n", bytepos, glob);
-                int ujump = 0;
-                do {
-                    int r;
-                    unsigned b2, b3;
-                    unsigned b1 = content[++bytepos];
-                    if (b1 == 0xdf)
-                        break;
-                    switch(am_cmos[b1]) {
-                        case IMP:
-                            if (b1 == 0x60)
-                                ujump = 1;
-                        case IMPA:
-                            break;
-                        case IMM:
-                        case ZP:
-                        case ZPX:
-                        case ZPY:
-                        case INDX:
-                        case INDY:
-                        case IND:
-                            bytepos++;
-                            break;
-                        case ABSX:
-                        case ABSY:
-                        case IND16:
-                        case IND1X:
-                            bytepos += 2;
-                            break;
-                        case ABS:
-                            if (b1 == 0x4c) {
-                                b2 = content[++bytepos];
-                                b3 = content[++bytepos];
-                                dest = (b3 << 8) | b2;
-                            }
-                            else
-                                bytepos += 2;
-                            break;
-                        case PCR:
-                            r = *(signed char *)(content + ++bytepos);
-                            dest = bytepos + 1 + r;
-                            fprintf(ofp, "%04X: relative jump %d to %04X\n", bytepos, r, dest);
-                            if (b1 == 0x80)
-                                ujump = 1;
-                    }
-                    if (dest < code_size && glob_index[dest] == -1) {
-                        glob_index[dest] = GLOB_JUMP;
-                        new_labels++;
-                    }
-                }
-                while (!ujump);
-            }
-        }
-        fprintf(ofp, "found %d new jump destinations\n", new_labels);
-    } while (new_labels > 0);
+        fprintf(ofp, "%04X: ", addr);
+        prt_bytes(ofp, content, addr);
+        print_label(ofp, glob_index, addr);
+        addr = prt_mnemonics(ofp, content, addr);
+        glob = glob_index[addr];
+    } while (addr < size && glob != GLOB_DATA && content[addr] != 0xdf);
 
-    // Now go back and disassemble properly.
-
-    for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
-        int16_t glob = glob_index[bytepos];
-        if (glob >= 0) {
-            if (glob == GLOB_DATA) {
-                do {
-                    fprintf(ofp, "%04X:         ", bytepos);
-                    print_label(ofp, glob_index, bytepos);
-                    bytepos = print_data(ofp, content, code_size, glob_index, bytepos);
-                    glob = glob_index[bytepos];
-                }
-                while (bytepos < code_size && (glob < 0 || glob == GLOB_DATA));
-            }
-            else {
-                do {
-                    fprintf(ofp, "%04X: ", bytepos);
-                    if (glob >= 0 && glob != GLOB_JUMP && content[bytepos] == 0x0d) {
-                        fputs("0D       ", ofp);
-                        print_label(ofp, glob_index, bytepos);
-                        fputs("DB   0D\n", ofp);
-                        bytepos++;
-                    }
-                    else {
-                        prt_bytes(ofp, content, bytepos);
-                        print_label(ofp, glob_index, bytepos);
-                        bytepos = prt_mnemonics(ofp, content, bytepos);
-                    }
-                    glob = glob_index[bytepos];
-                } while (bytepos < code_size && glob != GLOB_DATA && content[bytepos] != 0xdf);
-            }
-        }
-    }
+    return addr;
 }

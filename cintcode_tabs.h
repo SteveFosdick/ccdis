@@ -39,6 +39,7 @@ typedef enum {
     CIT_UJMP,   // unconitional jump.
     CIT_CALL,   // call.
     CIT_RETN,   // return.
+    CIT_MCOD,   // switch to machine code.
     CIT_OTHR    // anything that does not affect control flow.
 } cintocde_it;
 
