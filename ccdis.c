@@ -8,23 +8,6 @@ static void ccdis_glob(FILE *ofp, const cintcode_op *opent, uint16_t globno) {
         fprintf(ofp, "%-7s %d\n", opent->mnemonic, globno);
 }
 
-static void print_label(FILE *ofp, int16_t *glob_index, uint16_t addr)
-{
-    int16_t glob = glob_index[addr];
-    if (glob >= 0) {
-        if (glob == GLOB_JUMP)
-            fprintf(ofp, " L%04X: ", addr);
-        else if (glob == GLOB_DATA)
-            fprintf(ofp, " D%04X: ", addr);
-        else if (glob < CINTCODE_NGLOB && cintocde_globs[glob][0])
-            fprintf(ofp, "%6.6s: ", cintocde_globs[glob]);
-        else
-            fprintf(ofp, " G%03d:  ", glob);
-    }
-    else
-        fputs("        ", ofp);
-}
-
 static void print_dest_addr(FILE *ofp, int16_t *glob_index, uint16_t addr)
 {
     int16_t glob = glob_index[addr];
@@ -192,7 +175,7 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
         if (glob >= 0) {
             if (glob == GLOB_DATA) {
                 do {
-                    fprintf(ofp, "%04X         ", bytepos);
+                    fprintf(ofp, "%04X:         ", bytepos);
                     print_label(ofp, glob_index, bytepos);
                     bytepos = print_data(ofp, content, code_size, glob_index, bytepos);
                     glob = glob_index[bytepos];
@@ -209,11 +192,11 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                     opent = cintcode_ops + b1;
                     switch(opent->cc_am) {
                         case CAM_IMP:
-                            fprintf(ofp, "%04X %02X      ", oppos, b1);
+                            fprintf(ofp, "%04X: %02X      ", oppos, b1);
                             break;
                         case CAM_SWB:
                         case CAM_SWL:
-                            fprintf(ofp, "%04X %02X ...  ", oppos, b1);
+                            fprintf(ofp, "%04X: %02X ...  ", oppos, b1);
                             break;
                         case CAM_BYTE:
                         case CAM_BREL:
@@ -223,14 +206,14 @@ void ccdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                         case CAM_GLB2:
                             if (bytepos < code_size) {
                                 b2 = content[bytepos++];
-                                fprintf(ofp, "%04X %02X %02X   ", oppos, b1, b2);
+                                fprintf(ofp, "%04X: %02X %02X   ", oppos, b1, b2);
                             }
                             break;
                         case CAM_WORD:
                             if ((bytepos + 1) < code_size) {
                                 b2 = content[bytepos++];
                                 b3 = content[bytepos++];
-                                fprintf(ofp, "%04X %02X %02X %02X", bytepos, b1, b2, b3);
+                                fprintf(ofp, "%04X: %02X %02X %02X", bytepos, b1, b2, b3);
                             }
                     }
 

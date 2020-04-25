@@ -215,8 +215,8 @@ void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
         uint16_t dest = code_size;
         for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
             int16_t glob = glob_index[bytepos];
-            if (glob >= 0 && glob != 0x2000) {
-                if (glob == 0x4000)
+            if (glob >= 0 && glob != GLOB_DATA) {
+                if (glob == GLOB_JUMP)
                     fprintf(ofp, "%04X: starting at local dest\n", bytepos);
                 else
                     fprintf(ofp, "%04X: starting at global #%u\n", bytepos, glob);
@@ -265,7 +265,7 @@ void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
                                 ujump = 1;
                     }
                     if (dest < code_size && glob_index[dest] == -1) {
-                        glob_index[dest] = 0x4000;
+                        glob_index[dest] = GLOB_JUMP;
                         new_labels++;
                     }
                 }
@@ -279,41 +279,33 @@ void mcdis(FILE *ofp, const unsigned char *content, uint16_t code_size, int16_t 
 
     for (uint16_t bytepos = 0; bytepos < code_size; bytepos++) {
         int16_t glob = glob_index[bytepos];
-        if (glob >= 0 && glob != 0x2000) {
-            do {
-                fprintf(ofp, "%04X ", bytepos);
-                if (glob >= 0) {
-                    if (glob == 0x4000) {
-                        prt_bytes(ofp, content, bytepos);
-                        fprintf(ofp, " L%04X: ", bytepos);
-                        bytepos = prt_mnemonics(ofp, content, bytepos);
-                    }
-                    else if (glob == 0x2000) {
-                        fprintf(ofp, " D%04X: ", bytepos);
-                        for (int i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
-                            fprintf(ofp, "%02X ", content[bytepos++]);
-                            glob = glob_index[bytepos];
-                        }
-                        while (!glob || glob == 0x2000) {
-                            fprintf(ofp, "%04X         ", bytepos);
-                            for (int i = 0; i < 8 && (!glob || glob == 0x2000); i++) {
-                                fprintf(ofp, "%02X ", content[bytepos++]);
-                                glob = glob_index[bytepos];
-                            }
-                        }
+        if (glob >= 0) {
+            if (glob == GLOB_DATA) {
+                do {
+                    fprintf(ofp, "%04X:         ", bytepos);
+                    print_label(ofp, glob_index, bytepos);
+                    bytepos = print_data(ofp, content, code_size, glob_index, bytepos);
+                    glob = glob_index[bytepos];
+                }
+                while (bytepos < code_size && (glob < 0 || glob == GLOB_DATA));
+            }
+            else {
+                do {
+                    fprintf(ofp, "%04X: ", bytepos);
+                    if (glob >= 0 && glob != GLOB_JUMP && content[bytepos] == 0x0d) {
+                        fputs("0D       ", ofp);
+                        print_label(ofp, glob_index, bytepos);
+                        fputs("DB   0D\n", ofp);
+                        bytepos++;
                     }
                     else {
-                        unsigned b1 = content[bytepos++];
-                        fprintf(ofp, "%02X        G%03d:  EQUB %02X\n", b1, glob, b1);
+                        prt_bytes(ofp, content, bytepos);
+                        print_label(ofp, glob_index, bytepos);
+                        bytepos = prt_mnemonics(ofp, content, bytepos);
                     }
-                }
-                else {
-                    prt_bytes(ofp, content, bytepos);
-                    fputs("        ", ofp);
-                    bytepos = prt_mnemonics(ofp, content, bytepos);
-                }
-                glob = glob_index[bytepos];
-            } while (bytepos < code_size && content[bytepos] != 0xdf);
+                    glob = glob_index[bytepos];
+                } while (bytepos < code_size && glob != GLOB_DATA && content[bytepos] != 0xdf);
+            }
         }
     }
 }
