@@ -75,7 +75,7 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                             int16_t glob = glob_index[sdest];
                             if (glob < 0 || glob == GLOB_DATA) {
                                 glob_index[sdest] = GLOB_CINTCODE;
-                                new_labels++;
+                                (*new_labels)++;
                             }
                         }
                     }
@@ -104,7 +104,7 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                         int16_t glob = glob_index[addr];
                         if (glob < 0 || glob == GLOB_DATA) {
                             glob_index[addr] = GLOB_CINTCODE;
-                            new_labels++;
+                            (*new_labels)++;
                         }
                     }
                     addr = pos;
@@ -119,13 +119,13 @@ uint16_t cc_trace(FILE *ofp, const unsigned char *content, uint16_t size, int16_
                     fprintf(ofp, "jump to %04X\n", dest);
                     if (glob < 0 || glob == GLOB_DATA) {
                         glob_index[dest] = GLOB_CINTCODE;
-                        new_labels++;
+                        (*new_labels)++;
                     }
                     break;
                 default:
                     if (glob < 0) {
                         glob_index[dest] = GLOB_DATA;
-                        new_labels++;
+                        (*new_labels)++;
                     }
             }
         }
@@ -208,11 +208,12 @@ uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, 
                 fprintf(ofp, "%-7s %u\n", opent->mnemonic, (b3 << 8)|b2);
                 break;
             case CAM_BREL:
+                fprintf(ofp, "%-7s ", opent->mnemonic);
                 dest = addr + b2 - 0x80;
                 if (dest < size && glob_index[dest] >= 0)
                     print_dest_addr(ofp, glob_index, dest);
                 else
-                    fprintf(ofp, "%-7s %04X\n", opent->mnemonic, dest);
+                    fprintf(ofp, "%04X\n", dest);
                 break;
             case CAM_BIND:
                 dest = (addr + ((b2<<1)|1)) & 0xfffe;
