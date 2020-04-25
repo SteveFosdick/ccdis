@@ -108,7 +108,20 @@ static void do_hunks(FILE *ofp, const unsigned char *content, size_t size)
 
 static void do_simple(const unsigned char *content, size_t size, const char *arg) {
     unsigned start = strtoul(arg, NULL, 0);
-    ccdis(stdout, content + start, size - start, NULL);
+    if (start < size) {
+        size_t ix_bytes = size * sizeof(int16_t);
+        int16_t *glob_index = malloc(ix_bytes);
+        if (glob_index) {
+            memset(glob_index, 0xff, ix_bytes);
+            glob_index[start] = GLOB_JUMP;
+            ccdis(stdout, content, size, glob_index);
+            free(glob_index);
+        }
+        else
+            fputs("ccdis: out of memory allocating global index\n", stderr);
+    }
+    else
+        fprintf(stderr, "ccdis: start %d (%04X) exceeds size %ld (%04lX)\n", start, start, size, size);
 }
 
 int main(int argc, char **argv) {
