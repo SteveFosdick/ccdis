@@ -13,7 +13,7 @@ static const unsigned char *ccdir(FILE *ofp, const unsigned char *start, const c
     return start + 8;
 }
 
-static void disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index)
+static void disassemble(FILE *ofp, const unsigned char *content, unsigned base_addr, unsigned size, int16_t *glob_index)
 {
     int new_labels;
 
@@ -21,12 +21,12 @@ static void disassemble(FILE *ofp, const unsigned char *content, size_t size, in
 
     do {
         new_labels = 0;
-        for (size_t addr = 0; addr < size; ) {
+        for (unsigned addr = 0; addr < size; ) {
             int16_t glob = glob_index[addr];
             if (glob < 0 || glob == GLOB_DATA)
                 addr++;
             else if (glob == GLOB_MC6502)
-                addr = mc_trace(content, size, glob_index, addr, &new_labels);
+                addr = mc_trace(content, size, glob_index, base_addr, addr, &new_labels);
             else
                 addr = cc_trace(content, size, glob_index, addr, &new_labels);
         }
@@ -40,11 +40,11 @@ static void disassemble(FILE *ofp, const unsigned char *content, size_t size, in
         if (glob < 0)
             addr++;
         else if (glob == GLOB_DATA)
-            addr = print_data(ofp, content, size, glob_index, addr);
+            addr = print_data(ofp, content, size, glob_index, base_addr, addr);
         else if (glob == GLOB_MC6502)
-            addr = mc_disassemble(ofp, content, size, glob_index, addr);
+            addr = mc_disassemble(ofp, content, size, glob_index, base_addr, addr);
         else
-            addr = cc_disassemble(ofp, content, size, glob_index, addr);
+            addr = cc_disassemble(ofp, content, size, glob_index, base_addr, addr);
     }
 }
 
@@ -96,7 +96,7 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
 
         // Disassemble the code.
 
-        disassemble(ofp, content, code_size, glob_index);
+        disassemble(ofp, content, 0, code_size, glob_index);
         free(glob_index);
     }
     else
@@ -138,90 +138,106 @@ static int do_hunks(FILE *ofp, unsigned char *content, size_t size)
     return 0;
 }
 
-static int do_flat(FILE *ofp, const unsigned char *content, int argc, char **argv)
+static int do_flat(FILE *ofp, const unsigned char *content, long size, int argc, char **argv)
 {
-    size_t ix_bytes = MAX_FILE_SIZE * sizeof(int16_t);
-    int16_t *glob_index = malloc(ix_bytes);
-    if (glob_index) {
-        memset(glob_index, 0xff, ix_bytes);
-        while (argc--) {
-            int16_t glob = GLOB_CINTCODE;
-            const char *arg = *argv++;
-            char *end;
-            long addr = strtol(arg, &end, 0);
-            if (*end == ':') {
-                int ch = *++end;
-                if (ch == 'm' || ch == 'M')
-                    glob = GLOB_MC6502;
-                else if (ch == 'd' || ch == 'D')
-                    glob = GLOB_DATA;
+    long base_addr = strtol(*argv++, NULL, 0);
+    if (base_addr >= 0 && base_addr < MAX_FILE_SIZE) {
+        size_t ix_bytes = size * sizeof(int16_t);
+        int16_t *glob_index = malloc(ix_bytes);
+        if (glob_index) {
+            memset(glob_index, 0xff, ix_bytes);
+            long max_start = base_addr + size;
+            while (--argc) {
+                int16_t glob = GLOB_CINTCODE;
+                const char *arg = *argv++;
+                char *end;
+                long start_addr = strtol(arg, &end, 0);
+                if (*end == ':') {
+                    int ch = *++end;
+                    if (ch == 'm' || ch == 'M')
+                        glob = GLOB_MC6502;
+                    else if (ch == 'd' || ch == 'D')
+                        glob = GLOB_DATA;
+                }
+                if (start_addr >= base_addr && start_addr < max_start)
+                    glob_index[start_addr-base_addr] = glob;
+                else {
+                    fprintf(stderr, "ccdis: start address %#04lx  is out of range\n", start_addr);
+                    free(glob_index);
+                    return 4;
+                }
             }
-            if (addr < MAX_FILE_SIZE)
-                glob_index[addr] = glob;
-            else {
-                fprintf(stderr, "ccdis: start address %#04lx too large\n", addr);
-                free(glob_index);
-                return 4;
-            }
+            disassemble(stdout, content, base_addr, size, glob_index);
+            free(glob_index);
         }
-        disassemble(stdout, content, MAX_FILE_SIZE, glob_index);
-        free(glob_index);
+        else {
+            fputs("ccdis: out of memory allocating global index\n", stderr);
+            return 3;
+        }
     }
     else {
-        fputs("ccdis: out of memory allocating global index\n", stderr);
-        return 3;
+        fprintf(stderr, "ccdis: base address %#04lx is out of range\n", base_addr);
+        return 5;
     }
     return 0;
 }
 
 int main(int argc, char **argv)
 {
-    if (argc < 2 || argc == 3) {
-        fputs("Usage: ccdis <file>\n"
-              "       ccdis <file> <load-addr> <start> [ <start> ... ]\n", stderr);
-        return 1;
-    }
-    unsigned load_addr = 0;
-    if (argc > 2) {
-        load_addr = strtol(argv[2], NULL, 0);
-        if (load_addr > MAX_FILE_SIZE) {
-            fprintf(stderr, "ccdis: load address %#04x is too high\n", load_addr);
-            return 1;
-        }
-    }
     int status;
-    const char *filename = argv[1];
-    FILE *ifp = fopen(filename, "rb");
-    if (ifp) {
-        unsigned char *content = malloc(MAX_FILE_SIZE);
-        if (content) {
-            size_t avail = MAX_FILE_SIZE - load_addr;
-            size_t bytes = fread(content + load_addr, 1, avail, ifp);
-            if (ferror(ifp)) {
-                fprintf(stderr, "ccdis: read error on file '%s': %s\n", filename, strerror(errno));
-                status = 2;
-            }
-            else if (bytes < avail || feof(ifp)) {
-                if (argc > 2)
-                    status = do_flat(stdout, content, argc - 3, argv + 3);
-                else
-                    status = do_hunks(stdout, content, bytes);
+
+    if (argc == 2 || argc > 3) {
+        const char *filename = argv[1];
+        FILE *ifp = fopen(filename, "rb");
+        if (ifp) {
+            if (!fseek(ifp, 0L, SEEK_END)) {
+                long size = ftell(ifp);
+                if (size <= MAX_FILE_SIZE) {
+                    unsigned char *content = malloc(size);
+                    if (content) {
+                        if (!fseek(ifp, 0L, SEEK_SET)) {
+                            if (fread(content, size, 1, ifp) == 1) {
+                                if (argc == 2)
+                                    status = do_hunks(stdout, content, size);
+                                else
+                                    status = do_flat(stdout, content, size, argc - 2, argv + 2);
+                            }
+                            else {
+                                fprintf(stderr, "ccdis: read error on file '%s': %s\n", filename, strerror(errno));
+                                status = 2;
+                            }
+                        }
+                        else {
+                            fprintf(stderr, "ccdis: unable to seek on file '%s': %s\n", filename, strerror(errno));
+                            status = 2;
+                        }
+                        free(content);
+                    }
+                    else {
+                        fprintf(stderr, "ccdis: out of memory loading file '%s'\n", filename);
+                        status = 3;
+                    }
+                }
+                else {
+                    fprintf(stderr, "ccdis: file '%s' is too big (max 64K)\n", filename);
+                    status = 4;
+                }
             }
             else {
-                fprintf(stderr, "ccdis: file '%s' is too big to load at address %#04x\n", filename, load_addr);
-                status = 3;
+                fprintf(stderr, "ccdis: unable to seek on file '%s': %s\n", filename, strerror(errno));
+                status = 2;
             }
-            free(content);
+            fclose(ifp);
         }
         else {
-            fprintf(stderr, "ccdis: out of memory loading file '%s'\n", filename);
-            status = 3;
+            fprintf(stderr, "ccdis: unable to open file '%s' for reading: %s\n", filename, strerror(errno));
+            status = 2;
         }
-        fclose(ifp);
     }
     else {
-        fprintf(stderr, "ccdis: unable to open file '%s' for reading: %s\n", filename, strerror(errno));
-        status = 2;
+        fputs("Usage: ccdis <file>\n"
+              "       ccdis <file> <base-addr> <start> [ <start> ... ]\n", stderr);
+        status = 1;
     }
     return status;
 }

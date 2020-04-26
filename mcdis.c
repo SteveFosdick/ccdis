@@ -88,11 +88,11 @@ static const uint8_t am_cmos[256]=
 /*F0*/  PCR,  INDY, IND,  IMP,  ZP,   ZPX,  ZPX,  IMP,  IMP,  ABSY, IMP,  IMP,  ABS,  ABSX, ABSX, IMP,
 };
 
-size_t mc_trace(const unsigned char *content, size_t size, int16_t *glob_index, size_t addr, int *new_labels)
+unsigned mc_trace(const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr, int *new_labels)
 {
     int ujump = 0;
     do {
-        uint16_t dest = size;
+        int dest = size;
         int r;
         unsigned b2, b3;
         unsigned b1 = content[addr++];
@@ -123,7 +123,7 @@ size_t mc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
                 b2 = content[addr++];
                 b3 = content[addr++];
                 if (b1 == 0x4c)
-                    dest = (b3 << 8) | b2;
+                    dest = ((b3 << 8) | b2) - base_addr;
                 break;
             case PCR:
                 r = *(signed char *)(content + addr);
@@ -131,7 +131,7 @@ size_t mc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
                 if (b1 == 0x80)
                     ujump = 1;
         }
-        if (dest < size && glob_index[dest] == -1) {
+        if (dest > 0 && dest < size && glob_index[dest] == -1) {
             glob_index[dest] = GLOB_MC6502;
             (*new_labels)++;
         }
@@ -141,7 +141,7 @@ size_t mc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
     return addr;
 }
 
-static void prt_bytes(FILE *ofp, const unsigned char *content, uint32_t addr)
+static void prt_bytes(FILE *ofp, const unsigned char *content, unsigned addr)
 {
     uint8_t p1, p2;
 
@@ -176,10 +176,10 @@ static void prt_bytes(FILE *ofp, const unsigned char *content, uint32_t addr)
     }
 }
 
-static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t addr)
+static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned base_addr, unsigned addr)
 {
     uint8_t p1, p2;
-    uint16_t temp;
+    unsigned dest;
 
     uint8_t op = content[addr++];
     uint8_t ni = op_cmos[op];
@@ -249,23 +249,23 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t 
             break;
         case PCR:
             p1 = content[addr++];
-            temp = addr + (signed char)p1;
-            fprintf(ofp, "%s %04X    ", op_name, temp);
+            dest = base_addr + addr + (signed char)p1;
+            fprintf(ofp, "%s %04X    ", op_name, dest);
             break;
     }
     putc('\n', ofp);
     return addr;
 }
 
-size_t mc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index, size_t addr)
+unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr)
 {
     int16_t glob;
 
     do {
-        fprintf(ofp, "%04X: ", (unsigned int)addr);
+        fprintf(ofp, "%04X: ", base_addr + addr);
         prt_bytes(ofp, content, addr);
-        print_label(ofp, glob_index, addr);
-        addr = prt_mnemonics(ofp, content, addr);
+        print_label(ofp, glob_index, base_addr, addr);
+        addr = prt_mnemonics(ofp, content, base_addr, addr);
         glob = glob_index[addr];
     } while (addr < size && glob < 0 && content[addr] != 0xdf);
 

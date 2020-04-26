@@ -1,12 +1,12 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, size_t addr, int *new_labels)
+unsigned cc_trace(const unsigned char *content, unsigned size, int16_t *glob_index, unsigned addr, int *new_labels)
 {
     const cintcode_op *opent;
 
     do {
-        uint16_t dest;
+        unsigned dest;
         unsigned b2, b3;
         unsigned b1 = content[addr++];
         opent = cintcode_ops + b1;
@@ -47,10 +47,10 @@ size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
             case CAM_SWB:
                 dest = size;
                 if ((size - addr) >= 4) {
-                    uint16_t pos = (addr + 1 ) & 0xfffe;
+                    unsigned pos = (addr + 1 ) & 0xfffe;
                     b2 = content[pos++];
                     b3 = content[pos++];
-                    uint16_t entries = b2 | (b3 << 8);
+                    unsigned entries = b2 | (b3 << 8);
                     addr = pos + entries * 2;
                     if (addr < size) {
                         b2 = content[pos++];
@@ -60,9 +60,9 @@ size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
                             pos += 2;
                             b2 = content[pos++];
                             b3 = content[pos++];
-                            uint16_t w2 = (b2 | (b3 << 8));
-                            uint16_t sdest = pos + w2 - 2;
-                            int16_t glob = glob_index[sdest];
+                            unsigned w2 = (b2 | (b3 << 8));
+                            unsigned sdest = pos + w2 - 2;
+                            int glob = glob_index[sdest];
                             if (glob < 0 || glob == GLOB_DATA) {
                                 glob_index[sdest] = GLOB_CINTCODE;
                                 (*new_labels)++;
@@ -74,10 +74,10 @@ size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
             case CAM_SWL:
                 dest = size;
                 if ((size - addr) >= 6) {
-                    uint16_t pos = (addr + 1 ) & 0xfffe;
+                    unsigned pos = (addr + 1 ) & 0xfffe;
                     b2 = content[pos++];
                     b3 = content[pos++];
-                    uint16_t entries = (b2 | (b3 << 8));
+                    unsigned entries = (b2 | (b3 << 8));
                     b2 = content[pos++];
                     b3 = content[pos++];
                     uint16_t addr = pos + (b2 | (b3 << 8)) - 2;
@@ -86,7 +86,7 @@ size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
                         b2 = content[pos++];
                         b3 = content[pos++];
                         addr = pos + (b2 | (b3 << 8)) - 2;
-                        int16_t glob = glob_index[addr];
+                        int glob = glob_index[addr];
                         if (glob < 0 || glob == GLOB_DATA) {
                             glob_index[addr] = GLOB_CINTCODE;
                             (*new_labels)++;
@@ -118,47 +118,56 @@ size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, 
     return addr;
 }
 
-static void ccdis_glob(FILE *ofp, const cintcode_op *opent, uint16_t globno) {
-    if (globno < CINTCODE_NGLOB && *cintocde_globs[globno].name)
+static void ccdis_glob(FILE *ofp, const cintcode_op *opent, int globno) {
+    if (globno > 0 && globno < CINTCODE_NGLOB && *cintocde_globs[globno].name)
         fprintf(ofp, "%-7s %d (%s)\n", opent->mnemonic, globno, cintocde_globs[globno].name);
     else
         fprintf(ofp, "%-7s %d\n", opent->mnemonic, globno);
 }
 
-static void print_dest_addr(FILE *ofp, int16_t *glob_index, uint16_t addr)
+static void print_dest_addr(FILE *ofp, int16_t *glob_index, unsigned size, unsigned base_addr, unsigned addr)
 {
-    int16_t glob = glob_index[addr];
-    if (glob >= 0) {
-        if (glob == GLOB_CINTCODE)
-            fprintf(ofp, "L%04X\n", addr);
-        else if (glob == GLOB_DATA)
-            fprintf(ofp, "D%04X\n", addr);
-        else if (glob < CINTCODE_NGLOB && *cintocde_globs[glob].name)
-            fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob].name, glob);
-        else
-            fprintf(ofp, "G%03d\n", glob);
+    if (addr < size) {
+        int glob = glob_index[addr];
+        if (glob >= 0) {
+            if (glob == GLOB_CINTCODE) {
+                fprintf(ofp, "L%04X\n", base_addr + addr);
+                return;
+            }
+            else if (glob == GLOB_DATA) {
+                fprintf(ofp, "D%04X\n", base_addr + addr);
+                return;
+            }
+            else if (glob < CINTCODE_NGLOB && *cintocde_globs[glob].name) {
+                fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob].name, glob);
+                return;
+            }
+            else {
+                fprintf(ofp, "G%03d\n", glob);
+                return;
+            }
+        }
     }
-    else
-        fprintf(ofp, "%04X\n", addr);
+    fprintf(ofp, "%04X\n", base_addr + addr);
 }
 
-size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index, size_t addr)
+unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr)
 {
     const cintcode_op *opent;
 
     do {
-        uint16_t dest, oppos = addr;
+        unsigned dest, oppos = addr;
         unsigned b1 = content[addr++];
         unsigned b2 = 0;
         unsigned b3 = 0;
         opent = cintcode_ops + b1;
         switch(opent->cc_am) {
             case CAM_IMP:
-                fprintf(ofp, "%04X: %02X       ", oppos, b1);
+                fprintf(ofp, "%04X: %02X       ", base_addr + oppos, b1);
                 break;
             case CAM_SWB:
             case CAM_SWL:
-                fprintf(ofp, "%04X: %02X ...   ", oppos, b1);
+                fprintf(ofp, "%04X: %02X ...   ", base_addr + oppos, b1);
                 break;
             case CAM_BYTE:
             case CAM_BREL:
@@ -168,18 +177,18 @@ size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int1
             case CAM_GLB2:
                 if (addr < size) {
                     b2 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X    ", oppos, b1, b2);
+                    fprintf(ofp, "%04X: %02X %02X    ", base_addr + oppos, b1, b2);
                 }
                 break;
             case CAM_WORD:
                 if ((addr + 1) < size) {
                     b2 = content[addr++];
                     b3 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X %02X ", oppos, b1, b2, b3);
+                    fprintf(ofp, "%04X: %02X %02X %02X ", base_addr + oppos, b1, b2, b3);
                 }
         }
 
-        print_label(ofp, glob_index, oppos);
+        print_label(ofp, glob_index, base_addr, oppos);
 
         switch(opent->cc_am) {
             case CAM_IMP:
@@ -194,10 +203,7 @@ size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int1
             case CAM_BREL:
                 fprintf(ofp, "%-7s ", opent->mnemonic);
                 dest = addr + b2 - 0x80;
-                if (dest < size && glob_index[dest] >= 0)
-                    print_dest_addr(ofp, glob_index, dest);
-                else
-                    fprintf(ofp, "%04X\n", dest);
+                print_dest_addr(ofp, glob_index, size, base_addr, dest);
                 break;
             case CAM_BIND:
                 dest = (addr + ((b2<<1)|1)) & 0xfffe;
@@ -214,10 +220,10 @@ size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int1
                 break;
             case CAM_SWB:
                 if ((size - addr) >= 4) {
-                    uint16_t pos = (addr + 1 ) & 0xfffe;
+                    unsigned pos = (addr + 1 ) & 0xfffe;
                     b2 = content[pos++];
                     b3 = content[pos++];
-                    uint16_t entries = b2 | (b3 << 8);
+                    unsigned entries = b2 | (b3 << 8);
                     addr = pos + entries * 2;
                     if (addr < size) {
                         b2 = content[pos++];
@@ -227,40 +233,40 @@ size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int1
                         while (entries--) {
                             b2 = content[pos++];
                             b3 = content[pos++];
-                            uint16_t tval = (b2 | (b3 << 8));
+                            unsigned tval = (b2 | (b3 << 8));
                             b2 = content[pos++];
                             b3 = content[pos++];
                             fprintf(ofp, "        %04X -> ", tval);
-                            print_dest_addr(ofp, glob_index, pos + (b2 | (b3 << 8)) - 2);
+                            print_dest_addr(ofp, glob_index, size, base_addr, pos + (b2 | (b3 << 8)) - 2);
                         }
                         fputs("     default -> ", ofp);
-                        print_dest_addr(ofp, glob_index, dest);
+                        print_dest_addr(ofp, glob_index, size, base_addr, dest);
                     }
                 }
                 break;
             case CAM_SWL:
                 if ((size - addr) >= 6) {
-                    uint16_t pos = (addr + 1 ) & 0xfffe;
+                    unsigned pos = (addr + 1 ) & 0xfffe;
                     b2 = content[pos++];
                     b3 = content[pos++];
-                    uint16_t entries = (b2 | (b3 << 8));
+                    unsigned entries = (b2 | (b3 << 8));
                     addr = pos + entries * 2 + 4;
                     if (addr < size) {
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        uint16_t addr = pos + (b2 | (b3 << 8)) - 2;
+                        unsigned addr = pos + (b2 | (b3 << 8)) - 2;
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        uint16_t low = (b2 | (b3 << 8));
+                        unsigned low = (b2 | (b3 << 8));
                         fprintf(ofp, "%-7s %04X %04X\n", opent->mnemonic, entries, low);
                         while (entries--) {
                             b2 = content[pos++];
                             b3 = content[pos++];
                             fprintf(ofp, "        %04X -> ", low++);
-                            print_dest_addr(ofp, glob_index, pos + (b2 | (b3 << 8)) - 2);
+                            print_dest_addr(ofp, glob_index, size, base_addr, pos + (b2 | (b3 << 8)) - 2);
                         }
                         fputs("     default -> ", ofp);
-                        print_dest_addr(ofp, glob_index, addr);
+                        print_dest_addr(ofp, glob_index, size, base_addr, addr);
                     }
                 }
                 break;
