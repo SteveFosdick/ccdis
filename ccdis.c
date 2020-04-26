@@ -1,7 +1,7 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-uint16_t cc_trace(const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
+size_t cc_trace(const unsigned char *content, size_t size, int16_t *glob_index, size_t addr, int *new_labels)
 {
     const cintcode_op *opent;
 
@@ -142,7 +142,7 @@ static void print_dest_addr(FILE *ofp, int16_t *glob_index, uint16_t addr)
         fprintf(ofp, "%04X\n", addr);
 }
 
-uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr)
+size_t cc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index, size_t addr)
 {
     const cintcode_op *opent;
 
@@ -175,7 +175,7 @@ uint16_t cc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, 
                 if ((addr + 1) < size) {
                     b2 = content[addr++];
                     b3 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X %02X ", addr, b1, b2, b3);
+                    fprintf(ofp, "%04X: %02X %02X %02X ", oppos, b1, b2, b3);
                 }
         }
 

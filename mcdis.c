@@ -88,7 +88,7 @@ static const uint8_t am_cmos[256]=
 /*F0*/  PCR,  INDY, IND,  IMP,  ZP,   ZPX,  ZPX,  IMP,  IMP,  ABSY, IMP,  IMP,  ABS,  ABSX, ABSX, IMP,
 };
 
-uint16_t mc_trace(const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr, int *new_labels)
+size_t mc_trace(const unsigned char *content, size_t size, int16_t *glob_index, size_t addr, int *new_labels)
 {
     int ujump = 0;
     do {
@@ -136,7 +136,7 @@ uint16_t mc_trace(const unsigned char *content, uint16_t size, int16_t *glob_ind
             (*new_labels)++;
         }
     }
-    while (!ujump);
+    while (addr < size && !ujump);
 
     return addr;
 }
@@ -257,12 +257,12 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, uint32_t 
     return addr;
 }
 
-uint16_t mc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, int16_t *glob_index, uint16_t addr)
+size_t mc_disassemble(FILE *ofp, const unsigned char *content, size_t size, int16_t *glob_index, size_t addr)
 {
     int16_t glob;
 
     do {
-        fprintf(ofp, "%04X: ", addr);
+        fprintf(ofp, "%04X: ", (unsigned int)addr);
         prt_bytes(ofp, content, addr);
         print_label(ofp, glob_index, addr);
         addr = prt_mnemonics(ofp, content, addr);
