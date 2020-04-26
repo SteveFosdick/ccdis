@@ -154,7 +154,7 @@ const cintcode_op cintcode_ops[256] = {
     /* 90 */ { "LP16",  CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 91 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 865E */
     /* 92 */ { "SWB",   CAM_SWB,  CIT_UJMP }, /* 84C3 */
-    /* 93 */ { "SWL",   CAM_SWL,  CIT_OTHR }, /* 84F5 */
+    /* 93 */ { "SWL",   CAM_SWL,  CIT_UJMP }, /* 84F5 */
     /* 94 */ { "ST",    CAM_IMP,  CIT_OTHR }, /* 85A1 */
     /* 95 */ { "ST1",   CAM_IMP,  CIT_OTHR }, /* 85A1 */
     /* 96 */ { "ST2",   CAM_IMP,  CIT_OTHR }, /* 85A1 */

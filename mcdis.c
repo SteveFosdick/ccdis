@@ -267,7 +267,7 @@ uint16_t mc_disassemble(FILE *ofp, const unsigned char *content, uint16_t size, 
         print_label(ofp, glob_index, addr);
         addr = prt_mnemonics(ofp, content, addr);
         glob = glob_index[addr];
-    } while (addr < size && glob != GLOB_DATA && content[addr] != 0xdf);
+    } while (addr < size && glob < 0 && content[addr] != 0xdf);
 
     return addr;
 }
