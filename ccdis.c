@@ -55,17 +55,19 @@ unsigned cc_trace(const unsigned char *content, unsigned size, int16_t *glob_ind
                     if (addr < size) {
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        dest = pos + (b2 | (b3 << 8)) - 2;
+                        dest = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
                         while (entries--) {
                             pos += 2;
                             b2 = content[pos++];
                             b3 = content[pos++];
                             unsigned w2 = (b2 | (b3 << 8));
-                            unsigned sdest = pos + w2 - 2;
-                            int glob = glob_index[sdest];
-                            if (glob < 0 || glob == GLOB_DATA) {
-                                glob_index[sdest] = GLOB_CINTCODE;
-                                (*new_labels)++;
+                            unsigned sdest = (pos + w2 - 2) & 0xffff;
+                            if (sdest < size) {
+                                int glob = glob_index[sdest];
+                                if (glob < 0 || glob == GLOB_DATA) {
+                                    glob_index[sdest] = GLOB_CINTCODE;
+                                    (*new_labels)++;
+                                }
                             }
                         }
                     }
@@ -80,16 +82,18 @@ unsigned cc_trace(const unsigned char *content, unsigned size, int16_t *glob_ind
                     unsigned entries = (b2 | (b3 << 8));
                     b2 = content[pos++];
                     b3 = content[pos++];
-                    uint16_t addr = pos + (b2 | (b3 << 8)) - 2;
+                    unsigned addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
                     pos += 2;
                     while (entries--) {
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        addr = pos + (b2 | (b3 << 8)) - 2;
-                        int glob = glob_index[addr];
-                        if (glob < 0 || glob == GLOB_DATA) {
-                            glob_index[addr] = GLOB_CINTCODE;
-                            (*new_labels)++;
+                        addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
+                        if (addr < size) {
+                            int glob = glob_index[addr];
+                            if (glob < 0 || glob == GLOB_DATA) {
+                                glob_index[addr] = GLOB_CINTCODE;
+                                (*new_labels)++;
+                            }
                         }
                     }
                     addr = pos;
@@ -228,7 +232,7 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
                     if (addr < size) {
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        dest = pos - 2 + (b2 | (b3 << 8));
+                        dest = (pos - 2 + (b2 | (b3 << 8))) & 0xffff;
                         fprintf(ofp, "%-7s %04X\n", opent->mnemonic, entries);
                         while (entries--) {
                             b2 = content[pos++];
@@ -237,7 +241,7 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
                             b2 = content[pos++];
                             b3 = content[pos++];
                             fprintf(ofp, "        %04X -> ", tval);
-                            print_dest_addr(ofp, glob_index, size, base_addr, pos + (b2 | (b3 << 8)) - 2);
+                            print_dest_addr(ofp, glob_index, size, base_addr, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
                         }
                         fputs("     default -> ", ofp);
                         print_dest_addr(ofp, glob_index, size, base_addr, dest);
@@ -254,7 +258,7 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
                     if (addr < size) {
                         b2 = content[pos++];
                         b3 = content[pos++];
-                        unsigned addr = pos + (b2 | (b3 << 8)) - 2;
+                        unsigned addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
                         b2 = content[pos++];
                         b3 = content[pos++];
                         unsigned low = (b2 | (b3 << 8));
@@ -263,7 +267,7 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
                             b2 = content[pos++];
                             b3 = content[pos++];
                             fprintf(ofp, "        %04X -> ", low++);
-                            print_dest_addr(ofp, glob_index, size, base_addr, pos + (b2 | (b3 << 8)) - 2);
+                            print_dest_addr(ofp, glob_index, size, base_addr, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
                         }
                         fputs("     default -> ", ofp);
                         print_dest_addr(ofp, glob_index, size, base_addr, addr);

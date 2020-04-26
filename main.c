@@ -81,7 +81,8 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
 
         // Work forwards, printing section/needs/proc names.
 
-        for (const unsigned char *dptr = content;;) {
+        const unsigned char *dptr = content;
+        while (dptr < code_end) {
             uint16_t data = *dptr++;
             data |= (*dptr++) << 8;
             if (data == 0xfddf)
@@ -103,11 +104,29 @@ static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
         fputs("ccdis: out of memory allocating global index\n", stderr);
 }
 
-static int do_hunks(FILE *ofp, unsigned char *content, size_t size)
+static int do_hunks(FILE *ofp, const unsigned char *content, size_t size)
 {
-    unsigned addr = 0;
+    /* First go through the chain of hunks to make sure this is a
+     * valid CINTCODE hunk file.  This saves trying to disassemble
+     * the wrong type of file.
+     */
+    unsigned const char *end = content + size;
+    for (const unsigned char *ptr = content; ptr < end; ) {
+        unsigned hunk = ptr[0] | (ptr[1] << 8);
+        if (hunk == 992)
+            break;
+        unsigned blen = (ptr[2] << 1) | (ptr[3] << 9);
+        const unsigned char *next = ptr + blen + 4;
+        if (blen == 0 || next > end) {
+            fputs("ccdis: corrupt hunk chain, maybe not a CINTCODE file\n", stderr);
+            return 6;
+        }
+        ptr = next;
+    }
 
-    while (size >= 2) {
+    /* Now go back and disassemble the hunks */
+
+    for (unsigned addr = 0; size >= 2; ) {
         unsigned hunk = *content++;
         hunk |= (*content++) << 8;
         if (hunk == 992 || size < 4)
