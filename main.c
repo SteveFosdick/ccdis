@@ -159,7 +159,7 @@ static int do_flat(FILE *ofp, const unsigned char *content, int argc, char **arg
             if (addr < MAX_FILE_SIZE)
                 glob_index[addr] = glob;
             else {
-                fprintf(stderr, "ccdis: start address %04lX too large\n", addr);
+                fprintf(stderr, "ccdis: start address %#04lx too large\n", addr);
                 free(glob_index);
                 return 4;
             }
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
     if (argc > 2) {
         load_addr = strtol(argv[2], NULL, 0);
         if (load_addr > MAX_FILE_SIZE) {
-            fputs("ccdis: load address is too high\n", stderr);
+            fprintf(stderr, "ccdis: load address %#04x is too high\n", load_addr);
             return 1;
         }
     }
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
             size_t avail = MAX_FILE_SIZE - load_addr;
             size_t bytes = fread(content + load_addr, 1, avail, ifp);
             if (ferror(ifp)) {
-                fprintf(stderr, "ccdis: read error on '%s': %s\n", filename, strerror(errno));
+                fprintf(stderr, "ccdis: read error on file '%s': %s\n", filename, strerror(errno));
                 status = 2;
             }
             else if (bytes < avail || feof(ifp)) {
@@ -208,13 +208,13 @@ int main(int argc, char **argv)
                     status = do_hunks(stdout, content, bytes);
             }
             else {
-                fprintf(stderr, "ccdis: file '%s' is too big to load at address %04X\n", filename, load_addr);
+                fprintf(stderr, "ccdis: file '%s' is too big to load at address %#04x\n", filename, load_addr);
                 status = 3;
             }
             free(content);
         }
         else {
-            fprintf(stderr, "ccdis: out of memory loading '%s'\n", filename);
+            fprintf(stderr, "ccdis: out of memory loading file '%s'\n", filename);
             status = 3;
         }
         fclose(ifp);
