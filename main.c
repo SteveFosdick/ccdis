@@ -1,262 +1,260 @@
 #include "ccdis.h"
-#include <errno.h>
+#include "cintcode_tabs.h"
+#include "rom_tab.h"
+#include <argp.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
-static const unsigned char *ccdir(FILE *ofp, const unsigned char *start, const char *type) {
-    int len = *start;
-    fputs(type, ofp);
-    putc(' ', ofp);
-    fwrite(start+1, len, 1, ofp);
-    putc('\n', ofp);
-    return start + 8;
+uint16_t loc_index[MAX_FILE_SIZE];
+unsigned char content[MAX_FILE_SIZE+1];
+unsigned base_addr = 0;
+static bool rom_flag = false;
+
+static unsigned print_directive(unsigned addr, const char *type)
+{
+    unsigned len = content[addr];
+    fputs(type, stdout);
+    putchar(' ');
+    fwrite(content+addr+1, len, 1, stdout);
+    putchar('\n');
+    return addr + 8;
 }
 
-static void disassemble(FILE *ofp, const unsigned char *content, unsigned base_addr, unsigned size, int16_t *glob_index)
+static void setup_index(void)
 {
-    int new_labels;
+    memset(loc_index, 0, sizeof(loc_index));
+    if (rom_flag) {
+        rom_entry *end = rom_table + ROM_TAB_SIZE;
+        for (rom_entry *ptr = rom_table; ptr < end; ptr++)
+            loc_index[ptr->romaddr] = ptr->locindx;
+    }
+}
+
+static int disassemble(FILE *ofp, const unsigned char *content, unsigned start_addr, unsigned size)
+{
+    unsigned max_addr = start_addr + size;
+    unsigned new_labels;
 
     // First scan through the intructions and find the jump destinations
 
     do {
         new_labels = 0;
-        for (unsigned addr = 0; addr < size; ) {
-            int16_t glob = glob_index[addr];
-            if (glob < 0 || glob == GLOB_DATA)
-                addr++;
-            else if (glob == GLOB_MC6502)
-                addr = mc_trace(content, size, glob_index, base_addr, addr, &new_labels);
+        for (unsigned addr = start_addr; addr < max_addr; ) {
+            unsigned usetype = loc_index[addr] & LOC_USETYPE;
+            if (usetype == LOC_M6502)
+                addr = mc_trace(content, start_addr, addr, max_addr, &new_labels);
+            else if (usetype == LOC_CINTCODE)
+                addr = cc_trace(content, start_addr, addr, max_addr, &new_labels);
             else
-                addr = cc_trace(content, size, glob_index, addr, &new_labels);
+                addr++;
         }
     }
     while (new_labels > 0);
 
     // Now go back and disassemble */
 
-    for (size_t addr = 0; addr < size; ) {
-        int16_t glob = glob_index[addr];
-        if (glob < 0)
-            addr++;
-        else if (glob == GLOB_DATA)
-            addr = print_data(ofp, content, size, glob_index, base_addr, addr);
-        else if (glob == GLOB_MC6502)
-            addr = mc_disassemble(ofp, content, size, glob_index, base_addr, addr);
+    for (unsigned addr = start_addr; addr < max_addr; ) {
+        unsigned usetype = loc_index[addr] & LOC_USETYPE;
+        if (usetype == LOC_M6502)
+            addr = mc_disassemble(ofp, content, addr, max_addr);
+        else if (usetype == LOC_CINTCODE)
+            addr = cc_disassemble(ofp, content, addr, max_addr);
+        else if (usetype == LOC_DATA)
+            addr = print_data(ofp, content, addr, max_addr);
         else
-            addr = cc_disassemble(ofp, content, size, glob_index, base_addr, addr);
+            addr++;
     }
+    return 0;
 }
 
-static void one_hunk(FILE *ofp, const unsigned char *content, size_t size)
+static int one_hunk(FILE *ofp, const char *fn, unsigned addr, unsigned size)
 {
-    // Search backwards from the end to find the zero marker
-    // that separates the code from the list of globals.
+    setup_index();
 
-    const unsigned char *gend = content + size;
-    const unsigned char *gptr = gend;
-    do
-        gptr -= 4;
-    while (gptr > content && (gptr[0] || gptr[1]));
-    const unsigned char *code_end = gptr;
-    uint16_t code_size = code_end - content;
-
-    // Allocate and populate an index for the code space that indicates
-    // for any address which global, if any, points there.
-
-    int16_t *glob_index = malloc(code_size * sizeof(uint16_t));
-    if (glob_index) {
-        int16_t *glob_ptr = glob_index;
-        int16_t *glob_end = glob_index + code_size;
-        while (glob_ptr < glob_end)
-            *glob_ptr++ = 0xffff;
-        for (gptr += 2, gend -= 2; gptr < gend; ) {
-            int16_t globno = *gptr++;
-            globno |= (*gptr++) << 8;
-            uint16_t bytepos = *gptr++;
-            bytepos |= (*gptr++) << 8;
-            if (bytepos < code_size)
-                glob_index[bytepos] = globno;
-        }
-
-        // Work forwards, printing section/needs/proc names.
-
-        const unsigned char *dptr = content;
-        while (dptr < code_end) {
-            uint16_t data = *dptr++;
-            data |= (*dptr++) << 8;
-            if (data == 0xfddf)
-                dptr = ccdir(ofp, dptr, "SECTION");
-            else if (data == 0xfeed)
-                dptr = ccdir(ofp, dptr, "NEEDS");
-            else if (data == 0xdfdf)
-                dptr = ccdir(ofp, dptr, "PROC");
-            else
-                break;
-        }
-
-        // Disassemble the code.
-
-        disassemble(ofp, content, 0, code_size, glob_index);
-        free(glob_index);
-    }
-    else
-        fputs("ccdis: out of memory allocating global index\n", stderr);
-}
-
-static int do_hunks(FILE *ofp, const unsigned char *content, size_t size)
-{
-    /* First go through the chain of hunks to make sure this is a
-     * valid CINTCODE hunk file.  This saves trying to disassemble
-     * the wrong type of file.
+    /* Process the list of globals for this hunk by working backwards
+     * from the end.  A word of zero is the delimiter.
      */
-    unsigned const char *end = content + size;
-    for (const unsigned char *ptr = content; ptr < end; ) {
-        unsigned hunk = ptr[0] | (ptr[1] << 8);
-        if (hunk == 992)
+
+    const unsigned char *gmin = content + addr + 4;
+    const unsigned char *gptr = gmin + size - 6;
+    while (gptr > gmin) {
+        gptr -= 4;
+        unsigned offset = gptr[2] | (gptr[3] << 8);
+        if (!offset)
             break;
-        unsigned blen = (ptr[2] << 1) | (ptr[3] << 9);
-        const unsigned char *next = ptr + blen + 4;
-        if (blen == 0 || next > end) {
-            fputs("ccdis: corrupt hunk chain, maybe not a CINTCODE file\n", stderr);
-            return 6;
+        unsigned globno = gptr[0] | (gptr[1] << 8);
+        if (globno < MAX_GLOB_NO)
+            loc_index[offset] = LOC_CINTCODE|LOC_GLOBAL|globno;
+        else {
+            fprintf(stderr, "ccdis: file '%s': global number %u too big\n", fn, globno);
+            return 5;
         }
+    }
+
+    /* Work forwards, printing section/needs/proc names. */
+
+    size = gptr + 2 - gmin;
+    for (unsigned taddr = addr; taddr < size; ) {
+        unsigned b1 = content[taddr++];
+        unsigned b2 = content[taddr++];
+        unsigned data = b1 | (b2 << 8);
+        if (data == 0xfddf)
+            taddr = print_directive(taddr, "SECTION");
+        else if (data == 0xfeed)
+            taddr = print_directive(taddr, "NEEDS");
+        else if (data == 0xdfdf)
+            taddr = print_directive(taddr, "PROC");
+        else
+            break;
+    }
+
+    /* Disassemble the code. */
+
+    disassemble(ofp, content + addr, 0, size);
+    return 0;
+}
+
+static int check_hunks(const char *fn, unsigned size)
+{
+    /* Go through the chain of hunks to make sure this is a valid
+     * CINTCODE hunk file.  This saves trying to disassemble the
+     * wrong type of file.
+     */
+
+    unsigned const char *end = content + size - 2;
+    for (const unsigned char *ptr = content; ptr <= end; ) {
+        unsigned b1 = *ptr++;
+        unsigned b2 = *ptr++;
+        unsigned hunk = b1 | (b2 << 8);
+        if (hunk == 992 && ptr >= end)
+            return 0;
+        if (ptr == end)
+            break;
+        b1 = *ptr++;
+        b2 = *ptr++;
+        unsigned blen = (b1 << 1) | (b2 << 9);
+        const unsigned char *next = ptr + blen;
+        if (blen == 0 || next > end)
+            break;
         ptr = next;
     }
-
-    /* Now go back and disassemble the hunks */
-
-    for (unsigned addr = 0; size >= 2; ) {
-        unsigned hunk = *content++;
-        hunk |= (*content++) << 8;
-        if (hunk == 992 || size < 4)
-            break;
-        unsigned blen = *content++ << 1;
-        blen |= (*content++) << 9;
-        unsigned ilen = blen + 4;
-        unsigned naddr = addr + ilen;
-        switch(hunk) {
-            case 1000:
-                fprintf(ofp, "found CINTCODE hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
-                one_hunk(ofp, content, blen);
-                break;
-            case 1001:
-                fprintf(ofp, "found MC hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
-                one_hunk(ofp, content, blen);
-                break;
-            case 1002:
-                fprintf(ofp, "found relocation hunk from %04X to %04X, len=%u\n", addr, naddr, blen);
-                break;
-            default:
-                fprintf(ofp, "found other hunk %u from %04X to %04X, len=%u\n", hunk, addr, naddr, blen);
-        }
-        content += blen;
-        addr = naddr;
-        size -= ilen;
-    }
-    return 0;
+    fprintf(stderr, "ccdis: corrupt hunk chain, maybe '%s' is not a CINTCODE file\n", fn);
+    return 6;
 }
 
-static int do_flat(FILE *ofp, const unsigned char *content, long size, int argc, char **argv)
-{
-    long base_addr = strtol(*argv++, NULL, 0);
-    if (base_addr >= 0 && base_addr < MAX_FILE_SIZE) {
-        size_t ix_bytes = size * sizeof(int16_t);
-        int16_t *glob_index = malloc(ix_bytes);
-        if (glob_index) {
-            memset(glob_index, 0xff, ix_bytes);
-            long max_start = base_addr + size;
-            while (--argc) {
-                int16_t glob = GLOB_CINTCODE;
-                const char *arg = *argv++;
-                char *end;
-                long start_addr = strtol(arg, &end, 0);
-                if (*end == ':') {
-                    int ch = *++end;
-                    if (ch == 'm' || ch == 'M')
-                        glob = GLOB_MC6502;
-                    else if (ch == 'd' || ch == 'D')
-                        glob = GLOB_DATA;
-                }
-                if (start_addr >= base_addr && start_addr < max_start)
-                    glob_index[start_addr-base_addr] = glob;
-                else {
-                    fprintf(stderr, "ccdis: start address %#04lx  is out of range\n", start_addr);
-                    free(glob_index);
-                    return 4;
-                }
-            }
-            disassemble(stdout, content, base_addr, size, glob_index);
-            free(glob_index);
-        }
-        else {
-            fputs("ccdis: out of memory allocating global index\n", stderr);
-            return 3;
-        }
-    }
-    else {
-        fprintf(stderr, "ccdis: base address %#04lx is out of range\n", base_addr);
-        return 5;
-    }
-    return 0;
-}
-
-int main(int argc, char **argv)
+static int iterate_hunks(FILE *ofp, const char *fn, unsigned start_addr, unsigned size)
 {
     int status;
 
-    if (argc == 2 || argc > 3) {
-        const char *filename = argv[1];
-        FILE *ifp = fopen(filename, "rb");
-        if (ifp) {
-            if (!fseek(ifp, 0L, SEEK_END)) {
-                long size = ftell(ifp);
-                if (size <= MAX_FILE_SIZE) {
-                    unsigned char *content = malloc(size);
-                    if (content) {
-                        if (!fseek(ifp, 0L, SEEK_SET)) {
-                            if (fread(content, size, 1, ifp) == 1) {
-                                if (argc == 2)
-                                    status = do_hunks(stdout, content, size);
-                                else
-                                    status = do_flat(stdout, content, size, argc - 2, argv + 2);
-                            }
-                            else {
-                                fprintf(stderr, "ccdis: read error on file '%s': %s\n", filename, strerror(errno));
-                                status = 2;
-                            }
-                        }
-                        else {
-                            fprintf(stderr, "ccdis: unable to seek on file '%s': %s\n", filename, strerror(errno));
-                            status = 2;
-                        }
-                        free(content);
-                    }
-                    else {
-                        fprintf(stderr, "ccdis: out of memory loading file '%s'\n", filename);
-                        status = 3;
-                    }
-                }
-                else {
-                    fprintf(stderr, "ccdis: file '%s' is too big (max 64K)\n", filename);
-                    status = 4;
-                }
+    if ((status = check_hunks(fn, size)) == 0) {
+        /* Now go back and disassemble the hunks */
+
+        for (unsigned addr = start_addr; size >= 2; ) {
+            unsigned hunk = content[addr] | (content[addr+1] << 8);
+            if (hunk == 992 || size < 4)
+                break;
+            unsigned blen = (content[addr+2] << 1) | (content[addr+3] << 9);
+            unsigned ilen = blen + 4;
+            unsigned naddr = addr + ilen;
+            switch(hunk) {
+                case 1000:
+                    fprintf(ofp, "found CINTCODE hunk from %04X to %04X, len=%04X\n", addr, naddr, blen);
+                    status = one_hunk(ofp, fn, addr+4, blen);
+                    break;
+                case 1001:
+                    fprintf(ofp, "found MC hunk from %04X to %04X, len=%04X\n", addr, naddr, blen);
+                    status = one_hunk(ofp, fn, addr+4, blen);
+                    break;
+                case 1002:
+                    fprintf(ofp, "found relocation hunk from %04X to %04X, len=%04X\n", addr, naddr, blen);
+                    break;
+                default:
+                    fprintf(ofp, "found other hunk %u from %04X to %04X, len=%04X\n", hunk, addr, naddr, blen);
             }
-            else {
-                fprintf(stderr, "ccdis: unable to seek on file '%s': %s\n", filename, strerror(errno));
-                status = 2;
-            }
-            fclose(ifp);
+            if (status)
+                break;
+            addr = naddr;
+            size -= ilen;
         }
-        else {
-            fprintf(stderr, "ccdis: unable to open file '%s' for reading: %s\n", filename, strerror(errno));
-            status = 2;
-        }
-    }
-    else {
-        fputs("Usage: ccdis <file>\n"
-              "       ccdis <file> <base-addr> <start> [ <start> ... ]\n", stderr);
-        status = 1;
     }
     return status;
+}
+
+static int simple_file(FILE *ofp, const char *fn, unsigned start_addr, unsigned size)
+{
+    setup_index();
+    return disassemble(ofp, content, base_addr, size);
+}
+
+static int (*file_func)(FILE *ofp, const char *fn, unsigned start_addr, unsigned size) = iterate_hunks;
+
+static int process_file(FILE *ofp, const char *fn)
+{
+    int status;
+    int fd = open(fn, O_RDONLY);
+    if (fd >= 0) {
+        /* Try to read one more character than max size to detect too big */
+        size_t max_bytes = MAX_FILE_SIZE - base_addr + 1;
+        ssize_t got_bytes = read(fd, content + base_addr, max_bytes);
+        if (got_bytes < 0) {
+            fprintf(stderr, "ccdis: read error on file '%s': %s\n", fn, strerror(errno));
+            status = 2;
+        }
+        else if (got_bytes == max_bytes) {
+            fprintf(stderr, "ccdis: file '%s' is too big\n", fn);
+            status = 3;
+        }
+        else
+            status = file_func(ofp, fn, base_addr, got_bytes);
+        close(fd);
+    }
+    else {
+        fprintf(stderr, "ccdis: unable to open file '%s' for reading: %s\n", fn, strerror(errno));
+        status = 2;
+    }
+    return status;
+}
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state)
+{
+    switch(key) {
+        case 'b':
+            if ((base_addr = strtoul(arg, NULL, 0)) > MAX_FILE_SIZE) {
+                argp_error(state, "base address %04X is too high", base_addr);
+                return EINVAL;
+            }
+            break;
+        case 'h':
+            file_func = iterate_hunks;
+            break;
+        case 'r':
+            rom_flag = true;
+            break;
+        case 's':
+            file_func = simple_file;
+            break;
+        case ARGP_KEY_ARG:
+            process_file(stdout, arg);
+            break;
+        case ARGP_KEY_NO_ARGS:
+            argp_error(state, "nothing to do");
+            return EINVAL;
+    }
+    return 0;
+}
+
+static const struct argp_option opts[] = {
+    { "base",   'b', "address", 0, "base address to load subsequent files at" },
+    { "hunk",   'h', NULL,      0, "following files are in CINTCODE hunk format" },
+    { "rom",    'r', NULL,      0, "pre-load the BCPL ROM globals" },
+    { "simple", 's', NULL,      0, "following files are simple binary" },
+    { 0 }
+};
+
+static const struct argp parser = { opts, parse_opt };
+
+int main(int argc, char **argv)
+{
+    int err = argp_parse(&parser, argc, argv, 0, NULL, NULL);
+    return err == 0 ? 0 : err == EINVAL ? 1 : err == ENOMEM ? 2 : 3;
 }

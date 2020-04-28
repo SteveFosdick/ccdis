@@ -1,5 +1,5 @@
 /* Tables to enable disassembling the CINTCODE used as an intermediate
- * code for BCPL on the RCP implementation for the BC Micro.
+ * code for BCPL on the RCP implementation for the BBC Micro.
  */
 
 #include "cintcode_tabs.h"
@@ -7,8 +7,8 @@
 /* CINTCODE opcodes */
 
 const cintcode_op cintcode_ops[256] = {
-    /* 00 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* 01 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* 00 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* 01 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* 02 */ { "BRK",   CAM_IMP,  CIT_UJMP }, /* 826A */
     /* 03 */ { "K3",    CAM_IMP,  CIT_CALL }, /* 82F2 */
     /* 04 */ { "K4",    CAM_IMP,  CIT_CALL }, /* 82F2 */
@@ -137,7 +137,7 @@ const cintcode_op cintcode_ops[256] = {
     /* 7F */ { "JGR0$", CAM_BIND, CIT_CJMP }, /* 8259 */
     /* 80 */ { "LP",    CAM_BYTE, CIT_OTHR }, /* 85FA */
     /* 81 */ { "LPW",   CAM_WORD, CIT_OTHR }, /* 861F */
-    /* 82 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* 82 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* 83 */ { "LP3",   CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 84 */ { "LP4",   CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 85 */ { "LP5",   CAM_IMP,  CIT_OTHR }, /* 8600 */
@@ -152,7 +152,7 @@ const cintcode_op cintcode_ops[256] = {
     /* 8E */ { "LP14",  CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 8F */ { "LP15",  CAM_IMP,  CIT_OTHR }, /* 8600 */
     /* 90 */ { "LP16",  CAM_IMP,  CIT_OTHR }, /* 8600 */
-    /* 91 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 865E */
+    /* 91 */ { "--",    CAM_IMP,  CIT_INVL }, /* 865E */
     /* 92 */ { "SWB",   CAM_SWB,  CIT_UJMP }, /* 84C3 */
     /* 93 */ { "SWL",   CAM_SWL,  CIT_UJMP }, /* 84F5 */
     /* 94 */ { "ST",    CAM_IMP,  CIT_OTHR }, /* 85A1 */
@@ -169,7 +169,7 @@ const cintcode_op cintcode_ops[256] = {
     /* 9F */ { "JLE0$", CAM_BIND, CIT_CJMP }, /* 825D */
     /* A0 */ { "SP",    CAM_BYTE, CIT_OTHR }, /* 8638 */
     /* A1 */ { "SPW",   CAM_WORD, CIT_OTHR }, /* 8646 */
-    /* A2 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* A2 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* A3 */ { "SP3",   CAM_IMP,  CIT_OTHR }, /* 862B */
     /* A4 */ { "SP4",   CAM_IMP,  CIT_OTHR }, /* 862B */
     /* A5 */ { "SP5",   CAM_IMP,  CIT_OTHR }, /* 862B */
@@ -201,7 +201,7 @@ const cintcode_op cintcode_ops[256] = {
     /* BF */ { "JGE0$", CAM_BIND, CIT_CJMP }, /* 8261 */
     /* C0 */ { "AP",    CAM_BYTE, CIT_OTHR }, /* 86B0 */
     /* C1 */ { "APW",   CAM_WORD, CIT_OTHR }, /* 86A7 */
-    /* C2 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* C2 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* C3 */ { "AP3",   CAM_IMP,  CIT_OTHR }, /* 86B6 */
     /* C4 */ { "AP4",   CAM_IMP,  CIT_OTHR }, /* 86B6 */
     /* C5 */ { "AP5",   CAM_IMP,  CIT_OTHR }, /* 86B6 */
@@ -212,8 +212,8 @@ const cintcode_op cintcode_ops[256] = {
     /* CA */ { "AP10",  CAM_IMP,  CIT_OTHR }, /* 86B6 */
     /* CB */ { "AP11",  CAM_IMP,  CIT_OTHR }, /* 86B6 */
     /* CC */ { "AP12",  CAM_IMP,  CIT_OTHR }, /* 86B6 */
-    /* CD */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* CE */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* CD */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* CE */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* CF */ { "CODE2", CAM_IMP,  CIT_MCOD }, /* 8701 */
     /* D0 */ { "NOP",   CAM_IMP,  CIT_OTHR }, /* 8697 */
     /* D1 */ { "A1",    CAM_IMP,  CIT_OTHR }, /* 868C */
@@ -230,10 +230,10 @@ const cintcode_op cintcode_ops[256] = {
     /* DC */ { "ST0P4", CAM_IMP,  CIT_OTHR }, /* 85AE */
     /* DD */ { "ST1P3", CAM_IMP,  CIT_OTHR }, /* 85B4 */
     /* DE */ { "ST1P4", CAM_IMP,  CIT_OTHR }, /* 85B4 */
-    /* DF */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* DF */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* E0 */ { "A",     CAM_BYTE, CIT_OTHR }, /* 8661 */
     /* E1 */ { "AW",    CAM_WORD, CIT_OTHR }, /* 8667 */
-    /* E2 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* E2 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* E3 */ { "L0P3",  CAM_IMP,  CIT_OTHR }, /* 86D0 */
     /* E4 */ { "L0P4",  CAM_IMP,  CIT_OTHR }, /* 86D0 */
     /* E5 */ { "L0P5",  CAM_IMP,  CIT_OTHR }, /* 86D0 */
@@ -244,10 +244,10 @@ const cintcode_op cintcode_ops[256] = {
     /* EA */ { "L0P10", CAM_IMP,  CIT_OTHR }, /* 86D0 */
     /* EB */ { "L0P11", CAM_IMP,  CIT_OTHR }, /* 86D0 */
     /* EC */ { "L0P12", CAM_IMP,  CIT_OTHR }, /* 86D0 */
-    /* ED */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* EE */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* EF */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* F0 */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
+    /* ED */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* EE */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* EF */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* F0 */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
     /* F1 */ { "NEG",   CAM_IMP,  CIT_OTHR }, /* 8684 */
     /* F2 */ { "NOT",   CAM_IMP,  CIT_OTHR }, /* 869A */
     /* F3 */ { "L1P3",  CAM_IMP,  CIT_OTHR }, /* 86D6 */
@@ -261,231 +261,231 @@ const cintcode_op cintcode_ops[256] = {
     /* FB */ { "L3P4",  CAM_IMP,  CIT_OTHR }, /* 86E3 */
     /* FC */ { "L4P3",  CAM_IMP,  CIT_OTHR }, /* 86EA */
     /* FD */ { "L4P4",  CAM_IMP,  CIT_OTHR }, /* 86EA */
-    /* FE */ { "--",    CAM_IMP,  CIT_OTHR }, /* 8776 */
-    /* FF */ { "--",    CAM_IMP,  CIT_OTHR }  /* 8776 */
+    /* FE */ { "--",    CAM_IMP,  CIT_INVL }, /* 8776 */
+    /* FF */ { "--",    CAM_IMP,  CIT_INVL }  /* 8776 */
 };
 
 /* Globals */
 
-const citcode_glob cintocde_globs[CINTCODE_NGLOB] = {
-    /* 000 */ { 0x0000, "MAXGLOB"      },
-    /* 001 */ { 0x0000, "START"        },
-    /* 002 */ { 0xAD96, "STOP"         },
-    /* 003 */ { 0x0000, "STARTINIT"    },
-    /* 004 */ { 0x0000, "ABORTCODE"    },
-    /* 005 */ { 0xAB96, "ABORTLABEL"   },
-    /* 006 */ { 0x0000, "ABORTLEVEL"   },
-    /* 007 */ { 0x0000, "G007"         },
-    /* 008 */ { 0x0000, "G008"         },
-    /* 009 */ { 0x0000, "G009"         },
-    /* 010 */ { 0x0000, "G010"         },
-    /* 011 */ { 0x0000, "MCRESULT"     },
-    /* 012 */ { 0x0000, "G012"         },
-    /* 013 */ { 0x0000, "G013"         },
-    /* 014 */ { 0x0000, "G014"         },
-    /* 015 */ { 0x0000, "RESULT2"      },
-    /* 016 */ { 0x0000, "STOREFILES"   },
-    /* 017 */ { 0x0000, "STREAMCHAIN"  },
-    /* 018 */ { 0x0000, "SYSINDEX"     },
-    /* 019 */ { 0x0000, "TRAPSTACK"    },
-    /* 020 */ { 0x0000, "MAINSTACK"    },
-    /* 021 */ { 0x0000, "LASTERROR"    },
-    /* 022 */ { 0x0000, "CURCO"        },
-    /* 023 */ { 0x96A8, "ABORT"        },
-    /* 024 */ { 0x0000, "NDPROG"       },
-    /* 025 */ { 0x96FA, "FREEVEC"      },
-    /* 026 */ { 0x971A, "GETVEC"       },
-    /* 027 */ { 0x97BA, "LEVEL"        },
-    /* 028 */ { 0x97CA, "LONGJUMP"     },
-    /* 029 */ { 0x97E0, "MAXVEC"       },
-    /* 030 */ { 0x0000, "STACKSIZE"    },
-    /* 031 */ { 0x8B80, "CALL"         },
-    /* 032 */ { 0x8B28, "G032"         },
-    /* 033 */ { 0x0000, "CLIINSTR"     },
-    /* 034 */ { 0x8BB2, "ENDTRAP"      },
-    /* 035 */ { 0x8B10, "OPSYS"        },
-    /* 036 */ { 0x8AC8, "MOVE"         },
-    /* 037 */ { 0x89E8, "MULDIV"       },
-    /* 038 */ { 0x8BAC, "TRAP"         },
-    /* 039 */ { 0xBCEE, "FSTYPE"       },
-    /* 040 */ { 0x0000, "WRITET"       },
-    /* 041 */ { 0x0000, "WRITEU"       },
-    /* 042 */ { 0x9394, "COMPCH"       },
-    /* 043 */ { 0x0000, "CALLCO"       },
-    /* 044 */ { 0x9116, "COWAIT"       },
-    /* 045 */ { 0x9126, "CREATECO"     },
-    /* 046 */ { 0x916A, "DELETECO"     },
-    /* 047 */ { 0x0000, "RESUMECO"     },
-    /* 048 */ { 0x0000, "HEAP"         },
-    /* 049 */ { 0x0000, "G049"         },
-    /* 050 */ { 0x0000, "G050"         },
-    /* 051 */ { 0x0000, "G051"         },
-    /* 052 */ { 0x0000, "CNSLINSTR"    },
-    /* 053 */ { 0x0000, "CNSLOUTSTR"   },
-    /* 054 */ { 0x0000, "HEAPEND"      },
-    /* 055 */ { 0x0000, "G055"         },
-    /* 056 */ { 0x0000, "G056"         },
-    /* 057 */ { 0x0000, "G057"         },
-    /* 058 */ { 0x0000, "ERRORSTREAM"  },
-    /* 059 */ { 0xA536, "CAPCH"        },
-    /* 060 */ { 0xBB5E, "G060"         },
-    /* 061 */ { 0xA276, "G061"         },
-    /* 062 */ { 0x0000, "COMMON2"      },
-    /* 063 */ { 0x0000, "COMMON3"      },
-    /* 064 */ { 0xA58C, "DELFILE"      },
-    /* 065 */ { 0xA59C, "DELXFILE"     },
-    /* 066 */ { 0xA684, "FINDINPUT"    },
-    /* 067 */ { 0xA694, "FINDOUTPUT"   },
-    /* 068 */ { 0xA6A4, "FINDXINPUT"   },
-    /* 069 */ { 0xA6B6, "FINDXOUTPUT"  },
-    /* 070 */ { 0xA74E, "RENAME"       },
-    /* 071 */ { 0x9AE6, "ENDREAD"      },
-    /* 072 */ { 0x9AFC, "ENDWRITE"     },
-    /* 073 */ { 0x9B12, "INPUT"        },
-    /* 074 */ { 0x9B20, "OUTPUT"       },
-    /* 075 */ { 0x9B2E, "RDBIN"        },
-    /* 076 */ { 0x9B56, "RDCH"         },
-    /* 077 */ { 0x0000, "TESTSTR"      },
-    /* 078 */ { 0x9BA6, "G078"         },
-    /* 079 */ { 0x9BFE, "SELECTINPUT"  },
-    /* 080 */ { 0x9C62, "SELECTOUTPUT" },
-    /* 081 */ { 0x8BF2, "WRBIN"        },
-    /* 082 */ { 0x8BF6, "WRCH"         },
-    /* 083 */ { 0x9CF0, "UNRDCH"       },
-    /* 084 */ { 0x91AC, "NEWLINE"      },
-    /* 085 */ { 0x91BA, "NEWPAGE"      },
-    /* 086 */ { 0x90BC, "WRITEA"       },
-    /* 087 */ { 0x90DA, "WRITEBA"      },
-    /* 088 */ { 0x91CA, "WRITED"       },
-    /* 089 */ { 0x0000, "G089"         },
-    /* 090 */ { 0x9248, "WRITEF"       },
-    /* 091 */ { 0x9322, "WRITEHEX"     },
-    /* 092 */ { 0x935A, "WRITEN"       },
-    /* 093 */ { 0x0000, "WRITEOCT"     },
-    /* 094 */ { 0x8BFA, "WRITES"       },
-    /* 095 */ { 0x93A8, "COMPSTRING"   },
-    /* 096 */ { 0x93F0, "FINDARG"      },
-    /* 097 */ { 0x945A, "RDARGS"       },
-    /* 098 */ { 0x95AE, "RDITEM"       },
-    /* 099 */ { 0xA86A, "SPLIT"        },
-    /* 100 */ { 0x8DE6, "GLOBIN"       },
-    /* 101 */ { 0x8E50, "GLOBUNIN"     },
-    /* 102 */ { 0xA61C, "EXTSFILE"     },
-    /* 103 */ { 0xA4F0, "G103"         },
-    /* 104 */ { 0xA6CC, "LOADSEG"      },
-    /* 105 */ { 0x90BA, "UNLOADSEG"    },
-    /* 106 */ { 0x98F2, "READWORDS"    },
-    /* 107 */ { 0x0000, "G107"         },
-    /* 108 */ { 0x99DE, "TESTFLAGS"    },
-    /* 109 */ { 0x9A2C, "WRITEWORDS"   },
-    /* 110 */ { 0xBC16, "G110"         },
-    /* 111 */ { 0x9816, "RANDOM"       },
-    /* 112 */ { 0x0000, "TIME"         },
-    /* 113 */ { 0xA0D2, "G113"         },
-    /* 114 */ { 0x0000, "LINKEDFILES"  },
-    /* 115 */ { 0x8F24, "MODE"         },
-    /* 116 */ { 0x0000, "VDUINFO"      },
-    /* 117 */ { 0x89DA, "LIBBASE"      },
-    /* 118 */ { 0xAC3E, "RUNPROG"      },
-    /* 119 */ { 0xA92A, "G119"         },
-    /* 120 */ { 0xB7D4, "G120"         },
-    /* 121 */ { 0x8B92, "CALLBYTE"     },
-    /* 122 */ { 0x0000, "TRAPSTART"    },
-    /* 123 */ { 0xA7FA, "SAVE"         },
-    /* 124 */ { 0xBD80, "G124"         },
-    /* 125 */ { 0xA634, "FILETOVEC"    },
-    /* 126 */ { 0xA8B4, "VECTOFILE"    },
-    /* 127 */ { 0x0000, "APTOVEC"      },
-    /* 128 */ { 0x0000, "SOUND"        },
-    /* 129 */ { 0x0000, "ENVELOPE"     },
-    /* 130 */ { 0x0000, "G130"         },
-    /* 131 */ { 0x0000, "G131"         },
-    /* 132 */ { 0x0000, "G132"         },
-    /* 133 */ { 0x0000, "G133"         },
-    /* 134 */ { 0x0000, "G134"         },
-    /* 135 */ { 0x0000, "G135"         },
-    /* 136 */ { 0x0000, "G136"         },
-    /* 137 */ { 0x0000, "G137"         },
-    /* 138 */ { 0x0000, "G138"         },
-    /* 139 */ { 0x0000, "G139"         },
-    /* 140 */ { 0x0000, "G140"         },
-    /* 141 */ { 0x0000, "G141"         },
-    /* 142 */ { 0x0000, "G142"         },
-    /* 143 */ { 0x0000, "G143"         },
-    /* 144 */ { 0x0000, "G144"         },
-    /* 145 */ { 0x0000, "G145"         },
-    /* 146 */ { 0x0000, "G146"         },
-    /* 147 */ { 0x0000, "G147"         },
-    /* 148 */ { 0xBBFC, "G148"         },
-    /* 149 */ { 0xADB2, "CONTPRG"      },
-    /* 150 */ { 0x0000, "G150"         },
-    /* 151 */ { 0x0000, "G151"         },
-    /* 152 */ { 0x0000, "G152"         },
-    /* 153 */ { 0x0000, "G153"         },
-    /* 154 */ { 0x0000, "G154"         },
-    /* 155 */ { 0x0000, "G155"         },
-    /* 156 */ { 0x0000, "G156"         },
-    /* 157 */ { 0x0000, "G157"         },
-    /* 158 */ { 0x0000, "G158"         },
-    /* 159 */ { 0x0000, "G159"         },
-    /* 160 */ { 0x0000, "G160"         },
-    /* 161 */ { 0x0000, "G161"         },
-    /* 162 */ { 0x0000, "G162"         },
-    /* 163 */ { 0x0000, "G163"         },
-    /* 164 */ { 0x0000, "G164"         },
-    /* 165 */ { 0x0000, "G165"         },
-    /* 166 */ { 0x0000, "COLIST"       },
-    /* 167 */ { 0xB1C0, "G167"         },
-    /* 168 */ { 0xA730, "G168"         },
-    /* 169 */ { 0xA6DC, "READ"         },
-    /* 170 */ { 0x0000, "G170"         },
-    /* 171 */ { 0x0000, "G171"         },
-    /* 172 */ { 0x0000, "G172"         },
-    /* 173 */ { 0x0000, "G173"         },
-    /* 174 */ { 0x0000, "G174"         },
-    /* 175 */ { 0x0000, "G175"         },
-    /* 176 */ { 0x0000, "G176"         },
-    /* 177 */ { 0x0000, "G177"         },
-    /* 178 */ { 0x0000, "G178"         },
-    /* 179 */ { 0x0000, "G179"         },
-    /* 180 */ { 0x0000, "G180"         },
-    /* 181 */ { 0x0000, "G181"         },
-    /* 182 */ { 0x0000, "G182"         },
-    /* 183 */ { 0x0000, "G183"         },
-    /* 184 */ { 0x0000, "G184"         },
-    /* 185 */ { 0x0000, "G185"         },
-    /* 186 */ { 0x0000, "G186"         },
-    /* 187 */ { 0x0000, "G187"         },
-    /* 188 */ { 0x0000, "G188"         },
-    /* 189 */ { 0x0000, "G189"         },
-    /* 190 */ { 0x0000, "G190"         },
-    /* 191 */ { 0x0000, "G191"         },
-    /* 192 */ { 0x0000, "G192"         },
-    /* 193 */ { 0x0000, "G193"         },
-    /* 194 */ { 0x0000, "G194"         },
-    /* 195 */ { 0x0000, "G195"         },
-    /* 196 */ { 0x0000, "G196"         },
-    /* 197 */ { 0x0000, "G197"         },
-    /* 198 */ { 0x0000, "G198"         },
-    /* 199 */ { 0x0000, "G199"         },
-    /* 200 */ { 0x0000, "VDU"          },
-    /* 201 */ { 0x0000, "ADVAL"        },
-    /* 202 */ { 0xAE2C, "ERRORMESG"    },
-    /* 203 */ { 0xB652, "SHUFFLE"      },
-    /* 204 */ { 0xA848, "SAVEVEC"      },
-    /* 205 */ { 0x0000, "FAULTROUTINE" },
-    /* 206 */ { 0x0000, "G206"         },
-    /* 207 */ { 0xFFFE, "G207"         },
-    /* 208 */ { 0x0000, "TIDYSTATE"    },
-    /* 209 */ { 0xBD4A, "G209"         },
-    /* 210 */ { 0x9E20, "G210"         },
-    /* 211 */ { 0x8BF2, "G211"         },
-    /* 212 */ { 0xBD1C, "G212"         },
-    /* 213 */ { 0x8AE2, "MOVEBYTE"     },
-    /* 214 */ { 0x0000, "G214"         },
-    /* 215 */ { 0x0000, "G215"         },
-    /* 216 */ { 0x0000, "G216"         },
-    /* 217 */ { 0x0000, "G217"         },
-    /* 218 */ { 0x0000, "BACKMVBY"     },
-    /* 219 */ { 0x0000, "BACKMOVE"     }
+const char cintocde_globs[CINTCODE_NGLOB][13] = {
+    /* 000 */ "MAXGLOB",
+    /* 001 */ "START",
+    /* 002 */ "STOP",
+    /* 003 */ "STARTINIT",
+    /* 004 */ "ABORTCODE",
+    /* 005 */ "ABORTLABEL",
+    /* 006 */ "ABORTLEVEL",
+    /* 007 */ "G007",
+    /* 008 */ "G008",
+    /* 009 */ "G009",
+    /* 010 */ "G010",
+    /* 011 */ "MCRESULT",
+    /* 012 */ "G012",
+    /* 013 */ "G013",
+    /* 014 */ "G014",
+    /* 015 */ "RESULT2",
+    /* 016 */ "STOREFILES",
+    /* 017 */ "STREAMCHAIN",
+    /* 018 */ "SYSINDEX",
+    /* 019 */ "TRAPSTACK",
+    /* 020 */ "MAINSTACK",
+    /* 021 */ "LASTERROR",
+    /* 022 */ "CURCO",
+    /* 023 */ "ABORT",
+    /* 024 */ "NDPROG",
+    /* 025 */ "FREEVEC",
+    /* 026 */ "GETVEC",
+    /* 027 */ "LEVEL",
+    /* 028 */ "LONGJUMP",
+    /* 029 */ "MAXVEC",
+    /* 030 */ "STACKSIZE",
+    /* 031 */ "CALL",
+    /* 032 */ "G032",
+    /* 033 */ "CLIINSTR",
+    /* 034 */ "ENDTRAP",
+    /* 035 */ "OPSYS",
+    /* 036 */ "MOVE",
+    /* 037 */ "MULDIV",
+    /* 038 */ "TRAP",
+    /* 039 */ "FSTYPE",
+    /* 040 */ "WRITET",
+    /* 041 */ "WRITEU",
+    /* 042 */ "COMPCH",
+    /* 043 */ "CALLCO",
+    /* 044 */ "COWAIT",
+    /* 045 */ "CREATECO",
+    /* 046 */ "DELETECO",
+    /* 047 */ "RESUMECO",
+    /* 048 */ "HEAP",
+    /* 049 */ "G049",
+    /* 050 */ "G050",
+    /* 051 */ "G051",
+    /* 052 */ "CNSLINSTR",
+    /* 053 */ "CNSLOUTSTR",
+    /* 054 */ "HEAPEND",
+    /* 055 */ "G055",
+    /* 056 */ "G056",
+    /* 057 */ "G057",
+    /* 058 */ "ERRORSTREAM",
+    /* 059 */ "CAPCH",
+    /* 060 */ "G060",
+    /* 061 */ "G061",
+    /* 062 */ "COMMON2",
+    /* 063 */ "COMMON3",
+    /* 064 */ "DELFILE",
+    /* 065 */ "DELXFILE",
+    /* 066 */ "FINDINPUT",
+    /* 067 */ "FINDOUTPUT",
+    /* 068 */ "FINDXINPUT",
+    /* 069 */ "FINDXOUTPUT",
+    /* 070 */ "RENAME",
+    /* 071 */ "ENDREAD",
+    /* 072 */ "ENDWRITE",
+    /* 073 */ "INPUT",
+    /* 074 */ "OUTPUT",
+    /* 075 */ "RDBIN",
+    /* 076 */ "RDCH",
+    /* 077 */ "TESTSTR",
+    /* 078 */ "G078",
+    /* 079 */ "SELECTINPUT",
+    /* 080 */ "SELECTOUTPUT",
+    /* 081 */ "WRBIN",
+    /* 082 */ "WRCH",
+    /* 083 */ "UNRDCH",
+    /* 084 */ "NEWLINE",
+    /* 085 */ "NEWPAGE",
+    /* 086 */ "WRITEA",
+    /* 087 */ "WRITEBA",
+    /* 088 */ "WRITED",
+    /* 089 */ "G089",
+    /* 090 */ "WRITEF",
+    /* 091 */ "WRITEHEX",
+    /* 092 */ "WRITEN",
+    /* 093 */ "WRITEOCT",
+    /* 094 */ "WRITES",
+    /* 095 */ "COMPSTRING",
+    /* 096 */ "FINDARG",
+    /* 097 */ "RDARGS",
+    /* 098 */ "RDITEM",
+    /* 099 */ "SPLIT",
+    /* 100 */ "GLOBIN",
+    /* 101 */ "GLOBUNIN",
+    /* 102 */ "EXTSFILE",
+    /* 103 */ "G103",
+    /* 104 */ "LOADSEG",
+    /* 105 */ "UNLOADSEG",
+    /* 106 */ "READWORDS",
+    /* 107 */ "G107",
+    /* 108 */ "TESTFLAGS",
+    /* 109 */ "WRITEWORDS",
+    /* 110 */ "G110",
+    /* 111 */ "RANDOM",
+    /* 112 */ "TIME",
+    /* 113 */ "G113",
+    /* 114 */ "LINKEDFILES",
+    /* 115 */ "MODE",
+    /* 116 */ "VDUINFO",
+    /* 117 */ "LIBBASE",
+    /* 118 */ "RUNPROG",
+    /* 119 */ "G119",
+    /* 120 */ "G120",
+    /* 121 */ "CALLBYTE",
+    /* 122 */ "TRAPSTART",
+    /* 123 */ "SAVE",
+    /* 124 */ "G124",
+    /* 125 */ "FILETOVEC",
+    /* 126 */ "VECTOFILE",
+    /* 127 */ "APTOVEC",
+    /* 128 */ "SOUND",
+    /* 129 */ "ENVELOPE",
+    /* 130 */ "G130",
+    /* 131 */ "G131",
+    /* 132 */ "G132",
+    /* 133 */ "G133",
+    /* 134 */ "G134",
+    /* 135 */ "G135",
+    /* 136 */ "G136",
+    /* 137 */ "G137",
+    /* 138 */ "G138",
+    /* 139 */ "G139",
+    /* 140 */ "G140",
+    /* 141 */ "G141",
+    /* 142 */ "G142",
+    /* 143 */ "G143",
+    /* 144 */ "G144",
+    /* 145 */ "G145",
+    /* 146 */ "G146",
+    /* 147 */ "G147",
+    /* 148 */ "G148",
+    /* 149 */ "CONTPRG",
+    /* 150 */ "G150",
+    /* 151 */ "G151",
+    /* 152 */ "G152",
+    /* 153 */ "G153",
+    /* 154 */ "G154",
+    /* 155 */ "G155",
+    /* 156 */ "G156",
+    /* 157 */ "G157",
+    /* 158 */ "G158",
+    /* 159 */ "G159",
+    /* 160 */ "G160",
+    /* 161 */ "G161",
+    /* 162 */ "G162",
+    /* 163 */ "G163",
+    /* 164 */ "G164",
+    /* 165 */ "G165",
+    /* 166 */ "COLIST",
+    /* 167 */ "G167",
+    /* 168 */ "G168",
+    /* 169 */ "READ",
+    /* 170 */ "G170",
+    /* 171 */ "G171",
+    /* 172 */ "G172",
+    /* 173 */ "G173",
+    /* 174 */ "G174",
+    /* 175 */ "G175",
+    /* 176 */ "G176",
+    /* 177 */ "G177",
+    /* 178 */ "G178",
+    /* 179 */ "G179",
+    /* 180 */ "G180",
+    /* 181 */ "G181",
+    /* 182 */ "G182",
+    /* 183 */ "G183",
+    /* 184 */ "G184",
+    /* 185 */ "G185",
+    /* 186 */ "G186",
+    /* 187 */ "G187",
+    /* 188 */ "G188",
+    /* 189 */ "G189",
+    /* 190 */ "G190",
+    /* 191 */ "G191",
+    /* 192 */ "G192",
+    /* 193 */ "G193",
+    /* 194 */ "G194",
+    /* 195 */ "G195",
+    /* 196 */ "G196",
+    /* 197 */ "G197",
+    /* 198 */ "G198",
+    /* 199 */ "G199",
+    /* 200 */ "VDU",
+    /* 201 */ "ADVAL",
+    /* 202 */ "ERRORMESG",
+    /* 203 */ "SHUFFLE",
+    /* 204 */ "SAVEVEC",
+    /* 205 */ "FAULTROUTINE",
+    /* 206 */ "G206",
+    /* 207 */ "G207",
+    /* 208 */ "TIDYSTATE",
+    /* 209 */ "G209",
+    /* 210 */ "G210",
+    /* 211 */ "G211",
+    /* 212 */ "G212",
+    /* 213 */ "MOVEBYTE",
+    /* 214 */ "G214",
+    /* 215 */ "G215",
+    /* 216 */ "G216",
+    /* 217 */ "G217",
+    /* 218 */ "BACKMVBY",
+    /* 219 */ "BACKMOVE"
 };

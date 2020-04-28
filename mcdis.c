@@ -88,11 +88,11 @@ static const uint8_t am_cmos[256]=
 /*F0*/  PCR,  INDY, IND,  IMP,  ZP,   ZPX,  ZPX,  IMP,  IMP,  ABSY, IMP,  IMP,  ABS,  ABSX, ABSX, IMP,
 };
 
-unsigned mc_trace(const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr, int *new_labels)
+unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
 {
     int ujump = 0;
     do {
-        int dest = size;
+        int dest = max_addr;
         int r;
         unsigned b2, b3;
         unsigned b1 = content[addr++];
@@ -122,21 +122,30 @@ unsigned mc_trace(const unsigned char *content, unsigned size, int16_t *glob_ind
             case ABS:
                 b2 = content[addr++];
                 b3 = content[addr++];
-                if (b1 == 0x4c)
-                    dest = ((b3 << 8) | b2) - base_addr;
+                if (b1 == 0x4c) {
+                    dest = ((b3 << 8) | b2);
+                    ujump = 1;
+                }
                 break;
             case PCR:
-                r = *(signed char *)(content + addr);
+                r = *(signed char *)(content + addr++);
                 dest = addr + r;
                 if (b1 == 0x80)
                     ujump = 1;
         }
-        if (dest > 0 && dest < size && glob_index[dest] == -1) {
-            glob_index[dest] = GLOB_MC6502;
-            (*new_labels)++;
+        if (dest >= base_addr && dest < max_addr) {
+            unsigned loc = loc_index[dest];
+            unsigned usetype = loc & LOC_USETYPE;
+            if (usetype == 0 || usetype == LOC_DATA) {
+                loc = (loc & ~LOC_USETYPE) | LOC_M6502;
+                if (b1 == 0x20)
+                    loc |= LOC_CALL;
+                loc_index[dest] = loc;
+                (*new_labels)++;
+            }
         }
     }
-    while (addr < size && !ujump);
+    while (addr < max_addr && !ujump);
 
     return addr;
 }
@@ -176,7 +185,7 @@ static void prt_bytes(FILE *ofp, const unsigned char *content, unsigned addr)
     }
 }
 
-static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned base_addr, unsigned addr)
+static unsigned prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned addr)
 {
     uint8_t p1, p2;
     unsigned dest;
@@ -249,7 +258,7 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned 
             break;
         case PCR:
             p1 = content[addr++];
-            dest = base_addr + addr + (signed char)p1;
+            dest = addr + (signed char)p1;
             fprintf(ofp, "%s %04X    ", op_name, dest);
             break;
     }
@@ -257,17 +266,17 @@ static uint32_t prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned 
     return addr;
 }
 
-unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr)
+unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
-    int16_t glob;
+    unsigned usetype;
 
     do {
-        fprintf(ofp, "%04X: ", base_addr + addr);
+        fprintf(ofp, "%04X: ", addr);
         prt_bytes(ofp, content, addr);
-        print_label(ofp, glob_index, base_addr, addr);
-        addr = prt_mnemonics(ofp, content, base_addr, addr);
-        glob = glob_index[addr];
-    } while (addr < size && glob < 0 && content[addr] != 0xdf);
+        print_label(ofp, addr);
+        addr = prt_mnemonics(ofp, content, addr);
+        usetype = loc_index[addr] & LOC_USETYPE;
+    } while (addr < max_addr && usetype == 0 && content[addr] != 0xdf);
 
     return addr;
 }

@@ -1,38 +1,128 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-unsigned cc_trace(const unsigned char *content, unsigned size, int16_t *glob_index, unsigned addr, int *new_labels)
+static void jump_switch(unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
+{
+    if (addr >= base_addr && addr < max_addr) {
+        unsigned loc = loc_index[addr];
+        unsigned usetype = loc & LOC_USETYPE;
+        if (usetype == 0 || usetype == LOC_DATA) {
+            loc_index[addr] = (loc & ~LOC_USETYPE) | LOC_CINTCODE;
+            (*new_labels)++;
+        }
+    }
+}
+
+static unsigned trace_swb(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
+{
+    unsigned dest = max_addr;
+    if ((max_addr - addr) >= 4) {
+        unsigned pos = (addr + 1 ) & 0xfffe;
+        unsigned b2 = content[pos++];
+        unsigned b3 = content[pos++];
+        unsigned entries = b2 | (b3 << 8);
+        addr = pos + entries * 2;
+        if (addr < max_addr) {
+            b2 = content[pos++];
+            b3 = content[pos++];
+            dest = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
+            while (entries--) {
+                pos += 2;
+                b2 = content[pos++];
+                b3 = content[pos++];
+                unsigned w2 = (b2 | (b3 << 8));
+                jump_switch(base_addr, (pos + w2 - 2) & 0xffff, max_addr, new_labels);
+            }
+        }
+    }
+    return dest;
+}
+
+static unsigned trace_swl(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
+{
+    unsigned dest = max_addr;
+    if ((max_addr - addr) >= 6) {
+        unsigned pos = (addr + 1 ) & 0xfffe;
+        unsigned b2 = content[pos++];
+        unsigned b3 = content[pos++];
+        unsigned entries = (b2 | (b3 << 8));
+        b2 = content[pos++];
+        b3 = content[pos++];
+        dest = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
+        pos += 2;
+        while (entries--) {
+            b2 = content[pos++];
+            b3 = content[pos++];
+            jump_switch(base_addr, (pos + (b2 | (b3 << 8)) - 2) & 0xffff, max_addr, new_labels);
+        }
+        addr = pos;
+    }
+    return dest;
+}
+
+static void jump_full(const cintcode_op *opent, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
+{
+    if (addr >= base_addr && addr < max_addr) {
+        unsigned loc = loc_index[addr];
+        unsigned usetype = loc & LOC_USETYPE;
+        switch (opent->cc_it) {
+            case CIT_CJMP:
+            case CIT_UJMP:
+                if (usetype == 0 || usetype == LOC_DATA) {
+                    loc = (loc & ~LOC_USETYPE) | LOC_CINTCODE;
+                    (*new_labels)++;
+                }
+                break;
+            case CIT_CALL:
+                if (usetype == 0 || usetype == LOC_DATA) {
+                    loc = (loc & ~LOC_USETYPE) | LOC_CINTCODE | LOC_CALL;
+                    (*new_labels)++;
+                }
+                break;
+            default:
+                if (usetype == 0) {
+                    loc = loc | LOC_DATA;
+                    (*new_labels)++;
+                }
+        }
+        loc_index[addr] = loc;
+    }
+}
+
+unsigned cc_trace(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
 {
     const cintcode_op *opent;
-
     do {
         unsigned dest;
         unsigned b2, b3;
         unsigned b1 = content[addr++];
         opent = cintcode_ops + b1;
         if (opent->cc_it == CIT_MCOD) {
-            glob_index[addr] = GLOB_MC6502;
+            loc_index[addr] = (loc_index[addr] & ~LOC_USETYPE) | LOC_M6502;
             return addr;
         }
         switch(opent->cc_am) {
             case CAM_BREL:
-                if (addr == size)
+                if (addr == max_addr)
                     return addr;
                 b2 = content[addr++];
                 dest = addr + b2 - 0x80;
                 break;
             case CAM_BIND:
-                if (addr == size)
+                if (addr == max_addr)
                     return addr;
                 b2 = content[addr++];
                 dest = (addr + ((b2<<1)|1)) & 0xfffe;
-                if (dest < size) {
-                    glob_index[dest] = GLOB_DATA;
+                if (dest >= base_addr && dest < max_addr) {
+                    unsigned loc = loc_index[dest];
+                    unsigned use_type = loc & LOC_USETYPE;
+                    if (use_type == 0)
+                        loc_index[dest] = loc | LOC_DATA;
                     b2 = content[dest++];
                     b3 = content[dest];
                     dest = (dest + (b2 | (b3 << 8))) & 0xfffe;
                 } else
-                    dest = 0xffff;
+                    dest = max_addr;
                 break;
             case CAM_WORD:
                 addr++;
@@ -42,120 +132,86 @@ unsigned cc_trace(const unsigned char *content, unsigned size, int16_t *glob_ind
             case CAM_GLB2:
                 addr++;
             default:
-                dest = size;
+                dest = max_addr;
                 break;
             case CAM_SWB:
-                dest = size;
-                if ((size - addr) >= 4) {
-                    unsigned pos = (addr + 1 ) & 0xfffe;
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    unsigned entries = b2 | (b3 << 8);
-                    addr = pos + entries * 2;
-                    if (addr < size) {
-                        b2 = content[pos++];
-                        b3 = content[pos++];
-                        dest = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
-                        while (entries--) {
-                            pos += 2;
-                            b2 = content[pos++];
-                            b3 = content[pos++];
-                            unsigned w2 = (b2 | (b3 << 8));
-                            unsigned sdest = (pos + w2 - 2) & 0xffff;
-                            if (sdest < size) {
-                                int glob = glob_index[sdest];
-                                if (glob < 0 || glob == GLOB_DATA) {
-                                    glob_index[sdest] = GLOB_CINTCODE;
-                                    (*new_labels)++;
-                                }
-                            }
-                        }
-                    }
-                }
+                dest = trace_swb(content, base_addr, addr, max_addr, new_labels);
                 break;
             case CAM_SWL:
-                dest = size;
-                if ((size - addr) >= 6) {
-                    unsigned pos = (addr + 1 ) & 0xfffe;
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    unsigned entries = (b2 | (b3 << 8));
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    unsigned addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
-                    pos += 2;
-                    while (entries--) {
-                        b2 = content[pos++];
-                        b3 = content[pos++];
-                        addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
-                        if (addr < size) {
-                            int glob = glob_index[addr];
-                            if (glob < 0 || glob == GLOB_DATA) {
-                                glob_index[addr] = GLOB_CINTCODE;
-                                (*new_labels)++;
-                            }
-                        }
-                    }
-                    addr = pos;
-                }
+                dest = trace_swl(content, base_addr, addr, max_addr, new_labels);
                 break;
         }
-        if (dest < size && glob_index[dest] == -1) {
-            int16_t glob = glob_index[dest];
-            switch (opent->cc_it) {
-                case CIT_CJMP:
-                case CIT_UJMP:
-                    if (glob < 0 || glob == GLOB_DATA) {
-                        glob_index[dest] = GLOB_CINTCODE;
-                        (*new_labels)++;
-                    }
-                    break;
-                default:
-                    if (glob < 0) {
-                        glob_index[dest] = GLOB_DATA;
-                        (*new_labels)++;
-                    }
-            }
-        }
-    } while (addr < size && opent->cc_it != CIT_RETN && opent->cc_it != CIT_UJMP);
+        jump_full(opent, base_addr, dest, max_addr, new_labels);
+    } while (addr < max_addr && opent->cc_it != CIT_RETN && opent->cc_it != CIT_UJMP);
 
     return addr;
 }
 
-static void ccdis_glob(FILE *ofp, const cintcode_op *opent, int globno) {
-    if (globno > 0 && globno < CINTCODE_NGLOB && *cintocde_globs[globno].name)
-        fprintf(ofp, "%-7s %d (%s)\n", opent->mnemonic, globno, cintocde_globs[globno].name);
+static void ccdis_glob(FILE *ofp, const cintcode_op *opent, int globno)
+{
+    if (globno > 0 && globno < CINTCODE_NGLOB)
+        fprintf(ofp, "%-7s %s\n", opent->mnemonic, cintocde_globs[globno]);
     else
         fprintf(ofp, "%-7s %d\n", opent->mnemonic, globno);
 }
 
-static void print_dest_addr(FILE *ofp, int16_t *glob_index, unsigned size, unsigned base_addr, unsigned addr)
+static void print_swb(FILE *ofp, const unsigned char *content, const cintcode_op *opent, unsigned addr, unsigned max_addr)
 {
-    if (addr < size) {
-        int glob = glob_index[addr];
-        if (glob >= 0) {
-            if (glob == GLOB_CINTCODE) {
-                fprintf(ofp, "L%04X\n", base_addr + addr);
-                return;
+    if ((max_addr - addr) >= 4) {
+        unsigned pos = (addr + 1 ) & 0xfffe;
+        unsigned b2 = content[pos++];
+        unsigned b3 = content[pos++];
+        unsigned entries = b2 | (b3 << 8);
+        addr = pos + entries * 2;
+        if (addr < max_addr) {
+            b2 = content[pos++];
+            b3 = content[pos++];
+            unsigned dest = (pos - 2 + (b2 | (b3 << 8))) & 0xffff;
+            fprintf(ofp, "%-7s %04X\n", opent->mnemonic, entries);
+            while (entries--) {
+                b2 = content[pos++];
+                b3 = content[pos++];
+                unsigned tval = (b2 | (b3 << 8));
+                b2 = content[pos++];
+                b3 = content[pos++];
+                fprintf(ofp, "        %04X -> ", tval);
+                print_dest_addr(ofp, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
             }
-            else if (glob == GLOB_DATA) {
-                fprintf(ofp, "D%04X\n", base_addr + addr);
-                return;
-            }
-            else if (glob < CINTCODE_NGLOB && *cintocde_globs[glob].name) {
-                fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob].name, glob);
-                return;
-            }
-            else {
-                fprintf(ofp, "G%03d\n", glob);
-                return;
-            }
+            fputs("     default -> ", ofp);
+            print_dest_addr(ofp, dest);
         }
     }
-    fprintf(ofp, "%04X\n", base_addr + addr);
 }
 
-unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, int16_t *glob_index, unsigned base_addr, unsigned addr)
+static void print_swl(FILE *ofp, const unsigned char *content, const cintcode_op *opent, unsigned addr, unsigned max_addr)
+{
+    if ((max_addr - addr) >= 6) {
+        unsigned pos = (addr + 1 ) & 0xfffe;
+        unsigned b2 = content[pos++];
+        unsigned b3 = content[pos++];
+        unsigned entries = (b2 | (b3 << 8));
+        addr = pos + entries * 2 + 4;
+        if (addr < max_addr) {
+            b2 = content[pos++];
+            b3 = content[pos++];
+            unsigned addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
+            b2 = content[pos++];
+            b3 = content[pos++];
+            unsigned low = (b2 | (b3 << 8));
+            fprintf(ofp, "%-7s %04X %04X\n", opent->mnemonic, entries, low);
+            while (entries--) {
+                b2 = content[pos++];
+                b3 = content[pos++];
+                fprintf(ofp, "        %04X -> ", low++);
+                print_dest_addr(ofp, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
+            }
+            fputs("     default -> ", ofp);
+            print_dest_addr(ofp, addr);
+        }
+    }
+}
+
+unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
     const cintcode_op *opent;
 
@@ -167,11 +223,11 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
         opent = cintcode_ops + b1;
         switch(opent->cc_am) {
             case CAM_IMP:
-                fprintf(ofp, "%04X: %02X       ", base_addr + oppos, b1);
+                fprintf(ofp, "%04X: %02X       ", oppos, b1);
                 break;
             case CAM_SWB:
             case CAM_SWL:
-                fprintf(ofp, "%04X: %02X ...   ", base_addr + oppos, b1);
+                fprintf(ofp, "%04X: %02X ...   ", oppos, b1);
                 break;
             case CAM_BYTE:
             case CAM_BREL:
@@ -179,20 +235,20 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
             case CAM_GLB0:
             case CAM_GLB1:
             case CAM_GLB2:
-                if (addr < size) {
+                if (addr < max_addr) {
                     b2 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X    ", base_addr + oppos, b1, b2);
+                    fprintf(ofp, "%04X: %02X %02X    ", oppos, b1, b2);
                 }
                 break;
             case CAM_WORD:
-                if ((addr + 1) < size) {
+                if ((addr + 1) < max_addr) {
                     b2 = content[addr++];
                     b3 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X %02X ", base_addr + oppos, b1, b2, b3);
+                    fprintf(ofp, "%04X: %02X %02X %02X ", oppos, b1, b2, b3);
                 }
         }
 
-        print_label(ofp, glob_index, base_addr, oppos);
+        print_label(ofp, oppos);
 
         switch(opent->cc_am) {
             case CAM_IMP:
@@ -207,11 +263,12 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
             case CAM_BREL:
                 fprintf(ofp, "%-7s ", opent->mnemonic);
                 dest = addr + b2 - 0x80;
-                print_dest_addr(ofp, glob_index, size, base_addr, dest);
+                print_dest_addr(ofp, dest);
                 break;
             case CAM_BIND:
                 dest = (addr + ((b2<<1)|1)) & 0xfffe;
-                fprintf(ofp, "%-7s (%04X)\n", opent->mnemonic, dest);
+                fprintf(ofp, "%-7s ", opent->mnemonic);
+                print_dest_addr(ofp, dest);
                 break;
             case CAM_GLB0:
                 ccdis_glob(ofp, opent, b2);
@@ -223,56 +280,10 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned size, 
                 ccdis_glob(ofp, opent, 512 + b2);
                 break;
             case CAM_SWB:
-                if ((size - addr) >= 4) {
-                    unsigned pos = (addr + 1 ) & 0xfffe;
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    unsigned entries = b2 | (b3 << 8);
-                    addr = pos + entries * 2;
-                    if (addr < size) {
-                        b2 = content[pos++];
-                        b3 = content[pos++];
-                        dest = (pos - 2 + (b2 | (b3 << 8))) & 0xffff;
-                        fprintf(ofp, "%-7s %04X\n", opent->mnemonic, entries);
-                        while (entries--) {
-                            b2 = content[pos++];
-                            b3 = content[pos++];
-                            unsigned tval = (b2 | (b3 << 8));
-                            b2 = content[pos++];
-                            b3 = content[pos++];
-                            fprintf(ofp, "        %04X -> ", tval);
-                            print_dest_addr(ofp, glob_index, size, base_addr, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
-                        }
-                        fputs("     default -> ", ofp);
-                        print_dest_addr(ofp, glob_index, size, base_addr, dest);
-                    }
-                }
+                print_swb(ofp, content, opent, addr, max_addr);
                 break;
             case CAM_SWL:
-                if ((size - addr) >= 6) {
-                    unsigned pos = (addr + 1 ) & 0xfffe;
-                    b2 = content[pos++];
-                    b3 = content[pos++];
-                    unsigned entries = (b2 | (b3 << 8));
-                    addr = pos + entries * 2 + 4;
-                    if (addr < size) {
-                        b2 = content[pos++];
-                        b3 = content[pos++];
-                        unsigned addr = (pos + (b2 | (b3 << 8)) - 2) & 0xffff;
-                        b2 = content[pos++];
-                        b3 = content[pos++];
-                        unsigned low = (b2 | (b3 << 8));
-                        fprintf(ofp, "%-7s %04X %04X\n", opent->mnemonic, entries, low);
-                        while (entries--) {
-                            b2 = content[pos++];
-                            b3 = content[pos++];
-                            fprintf(ofp, "        %04X -> ", low++);
-                            print_dest_addr(ofp, glob_index, size, base_addr, (pos + (b2 | (b3 << 8)) - 2) & 0xffff);
-                        }
-                        fputs("     default -> ", ofp);
-                        print_dest_addr(ofp, glob_index, size, base_addr, addr);
-                    }
-                }
+                print_swl(ofp, content, opent, addr, max_addr);
                 break;
         }
     } while (opent->cc_it != CIT_RETN && opent->cc_it != CIT_UJMP && opent->cc_it != CIT_MCOD);
