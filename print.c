@@ -1,6 +1,8 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
+static const char label_fmt[] = " %9.9s: ";
+
 void print_label(FILE *ofp, unsigned addr)
 {
     if (addr < MAX_FILE_SIZE) {
@@ -8,9 +10,14 @@ void print_label(FILE *ofp, unsigned addr)
         if (loc & LOC_GLOBAL) {
             unsigned glob = loc & LOC_GLOBMASK;
             if (glob < CINTCODE_NGLOB)
-                fprintf(ofp, " %9.9s: ", cintocde_globs[glob]);
+                fprintf(ofp, label_fmt, cintocde_globs[glob]);
             else
                 fprintf(ofp, "      G%03d: ", glob);
+        }
+        else if (loc & LOC_LABEL) {
+            unsigned labl = loc & LOC_GLOBMASK;
+            if (labl < label_names_used)
+                fprintf(ofp, label_fmt, label_names[labl]);
         }
         else {
             unsigned usetype = loc & LOC_USETYPE;

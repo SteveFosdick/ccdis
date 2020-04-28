@@ -28,6 +28,7 @@ static void setup_index(void)
         for (rom_entry *ptr = rom_table; ptr < end; ptr++)
             loc_index[ptr->romaddr] = ptr->locindx;
     }
+    labels_apply();
 }
 
 static int disassemble(FILE *ofp, const unsigned char *content, unsigned start_addr, unsigned size)
@@ -227,6 +228,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case 'h':
             file_func = iterate_hunks;
             break;
+        case 'l':
+            return labels_load(arg);
         case 'r':
             rom_flag = true;
             break;
@@ -246,6 +249,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 static const struct argp_option opts[] = {
     { "base",   'b', "address", 0, "base address to load subsequent files at" },
     { "hunk",   'h', NULL,      0, "following files are in CINTCODE hunk format" },
+    { "labels", 'l', "file",    0, "file of labels" },
     { "rom",    'r', NULL,      0, "pre-load the BCPL ROM globals" },
     { "simple", 's', NULL,      0, "following files are simple binary" },
     { 0 }

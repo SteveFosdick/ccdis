@@ -20,7 +20,23 @@
 #define LOC_GLOBMASK 0x07ff
 
 #define MAX_FILE_SIZE 0x10000
-#define MAX_GLOB_NO   0x0300
+#define MAX_GLOB_NO   0x02ff
+
+typedef struct {
+    uint16_t addr;
+    uint16_t indx;
+} label_entry;
+
+extern label_entry *label_entries;
+extern size_t label_entries_used;
+
+#define MAX_LABEL_LEN 15
+
+extern char (*label_names)[MAX_LABEL_LEN+1];
+extern size_t label_names_used;
+
+extern void labels_apply(void);
+extern int labels_load(const char *fn);
 
 extern uint16_t loc_index[MAX_FILE_SIZE];
 
