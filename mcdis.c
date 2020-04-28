@@ -198,71 +198,80 @@ static unsigned prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned 
     switch (addr_mode)
     {
         case IMP:
-            fprintf(ofp, "%s         ", op_name);
+            fprintf(ofp, "%s\n", op_name);
             break;
         case IMPA:
-            fprintf(ofp, "%s A       ", op_name);
+            fprintf(ofp, "%s     A\n", op_name);
             break;
         case IMM:
             p1 = content[addr++];
-            fprintf(ofp, "%s #%02X     ", op_name, p1);
+            fprintf(ofp, "%s     #%02X\n", op_name, p1);
             break;
         case ZP:
             p1 = content[addr++];
-            fprintf(ofp, "%s %02X      ", op_name, p1);
+            fprintf(ofp, "%s     %02X\n", op_name, p1);
             break;
         case ZPX:
             p1 = content[addr++];
-            fprintf(ofp, "%s %02X,X    ", op_name, p1);
+            fprintf(ofp, "%s     %02X,X\n", op_name, p1);
             break;
         case ZPY:
             p1 = content[addr++];
-            fprintf(ofp, "%s %02X,Y    ", op_name, p1);
+            fprintf(ofp, "%s     %02X,Y\n", op_name, p1);
             break;
         case IND:
             p1 = content[addr++];
-            fprintf(ofp, "%s (%02X)    ", op_name, p1);
+            fprintf(ofp, "%s     (%02X)\n", op_name, p1);
             break;
         case INDX:
             p1 = content[addr++];
-            fprintf(ofp, "%s (%02X,X)  ", op_name, p1);
+            fprintf(ofp, "%s     (%02X,X)\n", op_name, p1);
             break;
         case INDY:
             p1 = content[addr++];
-            fprintf(ofp, "%s (%02X),Y  ", op_name, p1);
+            fprintf(ofp, "%s     (%02X),Y\n", op_name, p1);
             break;
         case ABS:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s %02X%02X    ", op_name, p2, p1);
+            fprintf(ofp, "%s     ", op_name);
+            print_dest_addr(ofp, p1 | (p2 << 8));
             break;
         case ABSX:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s %02X%02X,X  ", op_name, p2, p1);
+            fprintf(ofp, "%s     ", op_name);
+            print_dest_addr_nonl(ofp, p1 | (p2 << 8));
+            fputs(",X\n", ofp);
             break;
         case ABSY:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s %02X%02X,Y  ", op_name, p2, p1);
+            fprintf(ofp, "%s     ", op_name);
+            print_dest_addr_nonl(ofp, p1 | (p2 << 8));
+            fputs(",Y\n", ofp);
             break;
         case IND16:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s (%02X%02X)  ", op_name, p2, p1);
+            fprintf(ofp, "%s     (", op_name);
+            print_dest_addr_nonl(ofp, p1 | (p2 << 8));
+            fputs(")\n", ofp);
             break;
         case IND1X:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s (%02X%02X,X)", op_name, p2, p1);
+            fprintf(ofp, "%s     (", op_name);
+            print_dest_addr_nonl(ofp, p1 | (p2 << 8));
+            fputs(",X)\n", ofp);
             break;
         case PCR:
             p1 = content[addr++];
             dest = addr + (signed char)p1;
-            fprintf(ofp, "%s %04X    ", op_name, dest);
+            fprintf(ofp, "%s     ", op_name);
+            print_dest_addr(ofp, dest);
             break;
     }
-    putc('\n', ofp);
     return addr;
 }
 

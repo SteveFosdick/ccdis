@@ -47,6 +47,7 @@ extern unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned
 extern unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 
 extern void print_label(FILE *ofp, unsigned addr);
+extern void print_dest_addr_nonl(FILE *ofp, unsigned addr);
 extern void print_dest_addr(FILE *ofp, unsigned addr);
 extern unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 

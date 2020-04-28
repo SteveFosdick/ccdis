@@ -1,7 +1,7 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-static const char label_fmt[] = " %9.9s: ";
+static const char label_fmt[] = " %15.15s: ";
 
 void print_label(FILE *ofp, unsigned addr)
 {
@@ -22,7 +22,7 @@ void print_label(FILE *ofp, unsigned addr)
         else {
             unsigned usetype = loc & LOC_USETYPE;
             if (usetype == 0)
-                fputs("            ", ofp);
+                fputs("                  ", ofp);
             else {
                 int label_char = 'D';
                 if (usetype != LOC_DATA) {
@@ -31,7 +31,41 @@ void print_label(FILE *ofp, unsigned addr)
                     else
                         label_char = 'L';
                 }
-                fprintf(ofp, "     %c%04X: ", label_char, addr);
+                fprintf(ofp, "           %c%04X: ", label_char, addr);
+            }
+        }
+    }
+}
+
+void print_dest_addr_nonl(FILE *ofp, unsigned addr)
+{
+    if (addr < MAX_FILE_SIZE) {
+        unsigned loc = loc_index[addr];
+        if (loc & LOC_GLOBAL) {
+            unsigned glob = loc & LOC_GLOBMASK;
+            if (glob < CINTCODE_NGLOB)
+                fprintf(ofp, "%s (G%03d)", cintocde_globs[glob], glob);
+            else
+                fprintf(ofp, "G%03d", glob);
+        }
+        else if (loc & LOC_LABEL) {
+            unsigned labl = loc & LOC_GLOBMASK;
+            if (labl < label_names_used)
+                fputs(label_names[labl], ofp);
+        }
+        else {
+            unsigned usetype = loc & LOC_USETYPE;
+            if (usetype == 0)
+                fprintf(ofp, "%04X", addr);
+            else {
+                int label_char = 'D';
+                if (usetype != LOC_DATA) {
+                    if (loc & LOC_CALL)
+                        label_char = 'S';
+                    else
+                        label_char = 'L';
+                }
+                fprintf(ofp, "%c%04X", label_char, addr);
             }
         }
     }
@@ -39,31 +73,8 @@ void print_label(FILE *ofp, unsigned addr)
 
 void print_dest_addr(FILE *ofp, unsigned addr)
 {
-    if (addr < MAX_FILE_SIZE) {
-        unsigned loc = loc_index[addr];
-        if (loc & LOC_GLOBAL) {
-            unsigned glob = loc & LOC_GLOBMASK;
-            if (glob < CINTCODE_NGLOB)
-                fprintf(ofp, "%s (G%03d)\n", cintocde_globs[glob], glob);
-            else
-                fprintf(ofp, "G%03d\n", glob);
-        }
-        else {
-            unsigned usetype = loc & LOC_USETYPE;
-            if (usetype == 0)
-                fprintf(ofp, "%04X\n", addr);
-            else {
-                int label_char = 'D';
-                if (usetype != LOC_DATA) {
-                    if (loc & LOC_CALL)
-                        label_char = 'S';
-                    else
-                        label_char = 'L';
-                }
-                fprintf(ofp, "%c%04X\n", label_char, addr);
-            }
-        }
-    }
+    print_dest_addr_nonl(ofp, addr);
+    putc('\n', ofp);
 }
 
 static const char xdigs[16] = "0123456789ABCDEF";
