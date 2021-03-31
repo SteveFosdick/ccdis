@@ -12,7 +12,7 @@ void print_label(FILE *ofp, unsigned addr)
             if (glob < CINTCODE_NGLOB)
                 fprintf(ofp, label_fmt, cintocde_globs[glob]);
             else
-                fprintf(ofp, "      G%03d: ", glob);
+                fprintf(ofp, "            G%03d: ", glob);
         }
         else if (loc & LOC_LABEL) {
             unsigned labl = loc & LOC_GLOBMASK;
