@@ -42,9 +42,10 @@ static int one_label(const char *fn, unsigned line_no, char *line)
         return EINVAL;
     }
     char *value = strtok_r(NULL, " \t\n", &ptr);
+    char genlab[6];
     if (!value) {
-        error_at_line(0, 0, fn, line_no, "missing value");
-        return EINVAL;
+        snprintf(genlab, sizeof(genlab), "L%04X", bin_addr);
+        value = genlab;
     }
 
     unsigned flags;
