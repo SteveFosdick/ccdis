@@ -240,6 +240,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case 's':
             file_func = simple_file;
             break;
+        case 'B':
+            pf_current = &pf_beebasm;
+            break;
+        case 'C':
+            pf_current = &pf_ca65;
+            break;
+        case 'L':
+            pf_current = &pf_lancs;
+            break;
         case ARGP_KEY_ARG:
             process_file(stdout, arg);
             break;
@@ -257,6 +266,10 @@ static const struct argp_option opts[] = {
     { "labels", 'l', "file",    0, "file of labels" },
     { "rom",    'r', NULL,      0, "pre-load the BCPL ROM globals" },
     { "simple", 's', NULL,      0, "following files are simple binary" },
+    { "width",  'w', "size",    0, "width of the label field in characters" },
+    { "beebasm",'B', NULL,      0, "generate output for BeebAsm" },
+    { "ca65",   'C', NULL,      0, "generate output for ca65" },
+    { "lancs",  'L', NULL,      0, "generate output for Lancaster assembler" },
     { 0 }
 };
 

@@ -31,6 +31,7 @@ typedef struct {
 
 extern label_entry *label_entries;
 extern size_t label_entries_used;
+extern unsigned label_width;
 
 #define MAX_LABEL_LEN 15
 
@@ -47,6 +48,22 @@ extern unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsig
 
 extern unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 extern unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
+
+typedef struct {
+    const char *lab;
+    const char *byte;
+    const char *word;
+    const char *imm;
+    const char *acc;
+    const char *equ;
+    const char *org;
+    const char *data;
+} print_cfg;
+
+extern const print_cfg pf_beebasm;
+extern const print_cfg pf_lancs;
+extern const print_cfg pf_ca65;
+extern const print_cfg *pf_current;
 
 extern void print_label(FILE *ofp, unsigned addr);
 extern void print_dest_addr_nonl(FILE *ofp, unsigned addr);

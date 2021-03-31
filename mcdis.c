@@ -185,6 +185,8 @@ static void prt_bytes(FILE *ofp, const unsigned char *content, unsigned addr)
     }
 }
 
+static const char opsep[] = "     (";
+
 static unsigned prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned addr)
 {
     uint8_t p1, p2;
@@ -194,81 +196,100 @@ static unsigned prt_mnemonics(FILE *ofp, const unsigned char *content, unsigned 
     uint8_t ni = op_cmos[op];
     addr_mode_t addr_mode = am_cmos[op];
     const char *op_name = op_names[ni];
+    fwrite(op_name, 3, 1, ofp);
 
     switch (addr_mode)
     {
         case IMP:
-            fprintf(ofp, "%s\n", op_name);
+            putc('\n', ofp);
             break;
         case IMPA:
-            fprintf(ofp, "%s     A\n", op_name);
+            if (pf_current->acc) {
+                fwrite(opsep, 5, 1, ofp);
+                fputs(pf_current->acc, ofp);
+            }
+            putc('\n', ofp);
             break;
         case IMM:
             p1 = content[addr++];
-            fprintf(ofp, "%s     #%02X\n", op_name, p1);
+            fwrite(opsep, 5, 1, ofp);
+            fprintf(ofp, pf_current->imm, p1);
+            putc('\n', ofp);
             break;
         case ZP:
             p1 = content[addr++];
-            fprintf(ofp, "%s     %02X\n", op_name, p1);
+            fwrite(opsep, 5, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            putc('\n', ofp);
             break;
         case ZPX:
             p1 = content[addr++];
-            fprintf(ofp, "%s     %02X,X\n", op_name, p1);
+            fwrite(opsep, 5, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            fputs(",X\n", ofp);
             break;
         case ZPY:
             p1 = content[addr++];
-            fprintf(ofp, "%s     %02X,Y\n", op_name, p1);
+            fwrite(opsep, 5, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            fputs(",Y\n", ofp);
             break;
         case IND:
             p1 = content[addr++];
-            fprintf(ofp, "%s     (%02X)\n", op_name, p1);
+            fwrite(opsep, 6, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            fputs(")\n", ofp);
             break;
         case INDX:
             p1 = content[addr++];
-            fprintf(ofp, "%s     (%02X,X)\n", op_name, p1);
+            fwrite(opsep, 6, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            fputs(",X)\n", ofp);
             break;
         case INDY:
             p1 = content[addr++];
-            fprintf(ofp, "%s     (%02X),Y\n", op_name, p1);
+            fwrite(opsep, 6, 1, ofp);
+            fprintf(ofp, pf_current->byte, p1);
+            fputs("),Y\n", ofp);
             break;
         case ABS:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s     ", op_name);
+            fwrite(opsep, 5, 1, ofp);
             print_dest_addr(ofp, p1 | (p2 << 8));
             break;
         case ABSX:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s     ", op_name);
+            fwrite(opsep, 5, 1, ofp);
             print_dest_addr_nonl(ofp, p1 | (p2 << 8));
             fputs(",X\n", ofp);
             break;
         case ABSY:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s     ", op_name);
+            fwrite(opsep, 5, 1, ofp);
             print_dest_addr_nonl(ofp, p1 | (p2 << 8));
             fputs(",Y\n", ofp);
             break;
         case IND16:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s     (", op_name);
+            fwrite(opsep, 6, 1, ofp);
             print_dest_addr_nonl(ofp, p1 | (p2 << 8));
             fputs(")\n", ofp);
             break;
         case IND1X:
             p1 = content[addr++];
             p2 = content[addr++];
-            fprintf(ofp, "%s     (", op_name);
+            fwrite(opsep, 6, 1, ofp);
             print_dest_addr_nonl(ofp, p1 | (p2 << 8));
             fputs(",X)\n", ofp);
             break;
         case PCR:
             p1 = content[addr++];
             dest = addr + (signed char)p1;
-            fprintf(ofp, "%s     ", op_name);
+            fwrite(opsep, 5, 1, ofp);
             print_dest_addr(ofp, dest);
             break;
     }

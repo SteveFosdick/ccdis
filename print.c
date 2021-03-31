@@ -1,29 +1,78 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
-static const char label_fmt[] = " %15.15s: ";
+const print_cfg pf_orig = {
+    .lab  = "%s:",
+    .byte = "$%02x",
+    .word = "$%04x",
+    .imm  = "#$%02x",
+    .acc  = "",
+    .equ  = "%s\t.equ\t",
+    .org  = "\t.org\t",
+    .data = ".byte"
+};
+
+const print_cfg pf_beebasm = {
+    .lab  = ".%s",
+    .byte = "&%02X",
+    .word = "&%04X",
+    .imm  = "#&%02X",
+    .acc  = "\tA",
+    .equ  = "%s\t=\t",
+    .org  = "\tORG\t",
+    .data = "EQUB"
+};
+
+const print_cfg pf_lancs = {
+    .lab  = "%s:",
+    .byte = "$%02X",
+    .word = "$%04X",
+    .imm  = "#$%02X",
+    .acc  = "",
+    .equ  = "%s\tEQU\t",
+    .org  = "\tORG\t",
+    .data = "DFB"
+};
+
+const print_cfg pf_ca65 = {
+    .lab  = "%s:",
+    .byte = "$%02X",
+    .word = "$%04X",
+    .imm  = "#$%02X",
+    .acc  = "",
+    .equ  = "%s\t=\t",
+    .org  = "\t.org\t",
+    .data = ".byte"
+};
+
+const print_cfg *pf_current = &pf_orig;
+unsigned label_width = MAX_LABEL_LEN;
 
 void print_label(FILE *ofp, unsigned addr)
 {
+    char label[MAX_LABEL_LEN+1];
+    int size = 0;
     if (addr < MAX_FILE_SIZE) {
         unsigned loc = loc_index[addr];
         if (loc & LOC_GLOBAL) {
             unsigned glob = loc & LOC_GLOBMASK;
             if (glob < CINTCODE_NGLOB)
-                fprintf(ofp, label_fmt, cintocde_globs[glob]);
-            else
-                fprintf(ofp, "            G%03d: ", glob);
+                size = snprintf(label, sizeof(label), pf_current->lab, cintocde_globs[glob]);
+            else {
+                char globtxt[6];
+                snprintf(globtxt, sizeof(globtxt), "G%03d", glob);
+                size = snprintf(label, sizeof(label), pf_current->lab, globtxt);
+            }
         }
         else if (loc & LOC_LABEL) {
             unsigned labl = loc & LOC_GLOBMASK;
             if (labl < label_names_used)
-                fprintf(ofp, label_fmt, label_names[labl]);
+                size = snprintf(label, sizeof(label), pf_current->lab, label_names[labl]);
         }
         else {
             unsigned usetype = loc & LOC_USETYPE;
-            if (usetype == 0)
-                fputs("                  ", ofp);
-            else {
+            if (usetype != 0) {
+                char genlab[7];
                 int label_char = 'D';
                 if (usetype != LOC_DATA) {
                     if (loc & LOC_CALL)
@@ -31,10 +80,14 @@ void print_label(FILE *ofp, unsigned addr)
                     else
                         label_char = 'L';
                 }
-                fprintf(ofp, "           %c%04X: ", label_char, addr);
+                snprintf(genlab, sizeof(genlab), "%c%04X", label_char, addr);
+                size = snprintf(label, sizeof(label), pf_current->lab, genlab);
             }
         }
     }
+    if (size < label_width)
+        memset(label+size, ' ', label_width-size);
+    fwrite(label, label_width, 1, ofp);
 }
 
 void print_dest_addr_nonl(FILE *ofp, unsigned addr)
@@ -56,7 +109,7 @@ void print_dest_addr_nonl(FILE *ofp, unsigned addr)
         else {
             unsigned usetype = loc & LOC_USETYPE;
             if (usetype == 0)
-                fprintf(ofp, "%04X", addr);
+                fprintf(ofp, pf_current->word, addr);
             else {
                 int label_char = 'D';
                 if (usetype != LOC_DATA) {
