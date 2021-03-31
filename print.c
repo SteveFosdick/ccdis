@@ -11,7 +11,8 @@ const print_cfg pf_orig = {
     .acc  = "",
     .equ  = ".equ",
     .org  = ".org",
-    .data = ".byte"
+    .data = ".byte",
+    .str  = ".byte"
 };
 
 const print_cfg pf_beebasm = {
@@ -22,7 +23,8 @@ const print_cfg pf_beebasm = {
     .acc  = "A",
     .equ  = "=",
     .org  = "ORG",
-    .data = "EQUB"
+    .data = "EQUB",
+    .str  = "EQUS"
 };
 
 const print_cfg pf_lancs = {
@@ -33,7 +35,8 @@ const print_cfg pf_lancs = {
     .acc  = "",
     .equ  = "EQU",
     .org  = "ORG",
-    .data = "DFB"
+    .data = "DFB",
+    .str  = "ASC"
 };
 
 const print_cfg pf_ca65 = {
@@ -44,7 +47,8 @@ const print_cfg pf_ca65 = {
     .acc  = "",
     .equ  = "=",
     .org  = ".org",
-    .data = ".byte"
+    .data = ".byte",
+    .str  = ".byte"
 };
 
 const print_cfg *pf_current = &pf_orig;
@@ -166,7 +170,74 @@ void print_dest_addr(FILE *ofp, unsigned addr)
     putc('\n', ofp);
 }
 
-unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+enum str_state {
+    SS_START,
+    SS_INSTR,
+    SS_BYTES
+};
+
+static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    size_t dat_len = strlen(pf_current->data);
+    size_t str_len = strlen(pf_current->str);
+    char spaces[8];
+    memset(spaces, ' ', sizeof(spaces));
+    enum str_state state = SS_START;
+    do {
+        uint8_t val = content[addr];
+        if (val >= ' ' && val <= 0x7e && val != '"') {
+            switch(state) {
+                case SS_BYTES:
+                    putc('\n', ofp);
+                    // FALLTHROUGH
+                case SS_START:
+                    if (!asm_mode)
+                        fprintf(ofp, "%04X:          ", addr);
+                    print_label(ofp, addr);
+                    fwrite(pf_current->str, str_len, 1, ofp);
+                    fwrite(spaces, 8-str_len, 1, ofp);
+                    putc('"', ofp);
+                    state = SS_INSTR;
+                    // FALLTHROUGH
+                case SS_INSTR:
+                    putc(val, ofp);
+            }
+        }
+        else {
+            switch(state) {
+                case SS_INSTR:
+                    fputs("\"\n", ofp);
+                    // FALLTHROUGH
+                case SS_START:
+                    if (!asm_mode)
+                        fprintf(ofp, "%04X:          ", addr);
+                    print_label(ofp, addr);
+                    fwrite(pf_current->data, dat_len, 1, ofp);
+                    fwrite(spaces, 8-dat_len, 1, ofp);
+                    fprintf(ofp, pf_current->byte, val);
+                    state = SS_BYTES;
+                    break;
+                case SS_BYTES:
+                    fwrite(", ", 2, 1, ofp);
+                    fprintf(ofp, pf_current->byte, val);
+            }
+        }
+        addr++;
+    }
+    while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
+    switch(state) {
+        case SS_START:
+            break;
+        case SS_INSTR:
+            fputs("\"\n", ofp);
+            break;
+        case SS_BYTES:
+            putc('\n', ofp);
+    }
+    return addr;
+}
+
+static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
     size_t len = strlen(pf_current->data);
     char spaces[8];
@@ -205,4 +276,12 @@ unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsi
     }
     while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
     return addr;
+}
+
+unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    if (loc_index[addr] & LOC_STRING)
+        return print_string(ofp, content, addr, max_addr);
+    else
+        return print_bytes(ofp, content, addr, max_addr);
 }

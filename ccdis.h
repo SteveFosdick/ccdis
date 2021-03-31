@@ -18,6 +18,7 @@ extern bool asm_mode;
 #define LOC_CALL     0x2000
 #define LOC_GLOBAL   0x1000
 #define LOC_LABEL    0x0800
+#define LOC_STRING   0x2000
 
 #define LOC_GLOBMASK 0x07ff
 
@@ -50,14 +51,15 @@ extern unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned
 extern unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 
 typedef struct {
-    const char *lab;
-    const char *byte;
-    const char *word;
-    const char *imm;
-    const char *acc;
-    const char *equ;
-    const char *org;
-    const char *data;
+    const char lab[8];
+    const char byte[8];
+    const char word[8];
+    const char imm[8];
+    const char acc[8];
+    const char equ[8];
+    const char org[8];
+    const char data[8];
+    const char str[8];
 } print_cfg;
 
 extern const print_cfg pf_beebasm;
