@@ -58,6 +58,8 @@ static int one_label(const char *fn, unsigned line_no, char *line)
         flags = LOC_M6502|LOC_CALL|LOC_LABEL;
     else if (!strcasecmp(op, "data"))
         flags = LOC_DATA|LOC_LABEL;
+    else if (!strcasecmp(op, "word"))
+        flags = LOC_DATA|LOC_LABEL|LOC_WORD;
     else if (!strcasecmp(op, "string"))
         flags = LOC_DATA|LOC_LABEL|LOC_STRING;
     else {

@@ -11,7 +11,8 @@ const print_cfg pf_orig = {
     .acc  = "",
     .equ  = ".equ",
     .org  = ".org",
-    .data = ".byte",
+    .dfb  = ".byte",
+    .dfw  = ".word",
     .str  = ".byte"
 };
 
@@ -23,7 +24,8 @@ const print_cfg pf_beebasm = {
     .acc  = "A",
     .equ  = "=",
     .org  = "ORG",
-    .data = "EQUB",
+    .dfb  = "EQUB",
+    .dfw  = "EQUW",
     .str  = "EQUS"
 };
 
@@ -35,7 +37,8 @@ const print_cfg pf_lancs = {
     .acc  = "",
     .equ  = "EQU",
     .org  = "ORG",
-    .data = "DFB",
+    .dfb  = "DFB",
+    .dfw  = "DFW",
     .str  = "ASC"
 };
 
@@ -47,7 +50,8 @@ const print_cfg pf_ca65 = {
     .acc  = "",
     .equ  = "=",
     .org  = ".org",
-    .data = ".byte",
+    .dfb  = ".byte",
+    .dfw  = ".word",
     .str  = ".byte"
 };
 
@@ -178,7 +182,7 @@ enum str_state {
 
 static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
-    size_t dat_len = strlen(pf_current->data);
+    size_t dfb_len = strlen(pf_current->dfb);
     size_t str_len = strlen(pf_current->str);
     char spaces[8];
     memset(spaces, ' ', sizeof(spaces));
@@ -212,8 +216,8 @@ static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned a
                     if (!asm_mode)
                         fprintf(ofp, "%04X:          ", addr);
                     print_label(ofp, addr);
-                    fwrite(pf_current->data, dat_len, 1, ofp);
-                    fwrite(spaces, 8-dat_len, 1, ofp);
+                    fwrite(pf_current->dfb, dfb_len, 1, ofp);
+                    fwrite(spaces, 8-dfb_len, 1, ofp);
                     fprintf(ofp, pf_current->byte, val);
                     state = SS_BYTES;
                     break;
@@ -237,17 +241,45 @@ static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned a
     return addr;
 }
 
-static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+static unsigned print_words(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
-    size_t len = strlen(pf_current->data);
+    size_t dfw_len = strlen(pf_current->dfw);
     char spaces[8];
     memset(spaces, ' ', sizeof(spaces));
     do {
         if (!asm_mode)
             fprintf(ofp, "%04X:          ", addr);
         print_label(ofp, addr);
-        fwrite(pf_current->data, len, 1, ofp);
-        fwrite(spaces, 8-len, 1, ofp);
+        fwrite(pf_current->dfw, dfw_len, 1, ofp);
+        fwrite(spaces, 8-dfw_len, 1, ofp);
+        uint16_t val = content[addr++];
+        val |= (content[addr++]) << 8;
+        print_dest_addr_nonl(ofp, val);
+        for (int i = 0; i < (DATA_COLS-1) && addr < max_addr; i++) {
+            if (loc_index[addr] & LOC_USETYPE)
+                break;
+            val = content[addr++];
+            val |= (content[addr++]) << 8;
+            fwrite(", ", 2, 1, ofp);
+            print_dest_addr_nonl(ofp, val);
+        }
+        putc('\n', ofp);
+    }
+    while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
+    return addr;
+}
+
+static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    size_t dfb_len = strlen(pf_current->dfb);
+    char spaces[8];
+    memset(spaces, ' ', sizeof(spaces));
+    do {
+        if (!asm_mode)
+            fprintf(ofp, "%04X:          ", addr);
+        print_label(ofp, addr);
+        fwrite(pf_current->dfb, dfb_len, 1, ofp);
+        fwrite(spaces, 8-dfb_len, 1, ofp);
 
         unsigned taddr = addr;
         uint8_t val = content[taddr++];
@@ -280,8 +312,11 @@ static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned ad
 
 unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
-    if (loc_index[addr] & LOC_STRING)
+    unsigned loc_use = loc_index[addr];
+    if (loc_use & LOC_STRING)
         return print_string(ofp, content, addr, max_addr);
+    else if (loc_use & LOC_WORD)
+        return print_words(ofp, content, addr, max_addr);
     else
         return print_bytes(ofp, content, addr, max_addr);
 }

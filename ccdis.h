@@ -16,11 +16,14 @@ extern bool asm_mode;
 #define LOC_USETYPE  0xc000
 
 #define LOC_CALL     0x2000
-#define LOC_GLOBAL   0x1000
-#define LOC_LABEL    0x0800
-#define LOC_STRING   0x2000
 
-#define LOC_GLOBMASK 0x07ff
+#define LOC_STRING   0x2000
+#define LOC_WORD     0x1000
+
+#define LOC_GLOBAL   0x0800
+#define LOC_LABEL    0x0400
+
+#define LOC_GLOBMASK 0x03ff
 
 #define MAX_FILE_SIZE 0x10000
 #define MAX_GLOB_NO   0x02ff
@@ -58,7 +61,8 @@ typedef struct {
     const char acc[8];
     const char equ[8];
     const char org[8];
-    const char data[8];
+    const char dfb[8];
+    const char dfw[8];
     const char str[8];
 } print_cfg;
 
