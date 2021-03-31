@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+bool asm_mode = false;
 uint16_t loc_index[MAX_FILE_SIZE];
 unsigned char content[MAX_FILE_SIZE+1];
 unsigned base_addr = 0;
@@ -219,6 +220,9 @@ static int process_file(FILE *ofp, const char *fn)
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
     switch(key) {
+        case 'a':
+            asm_mode = true;
+            break;
         case 'b':
             if ((base_addr = strtoul(arg, NULL, 0)) > MAX_FILE_SIZE) {
                 argp_error(state, "base address %04X is too high", base_addr);
@@ -247,6 +251,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 }
 
 static const struct argp_option opts[] = {
+    { "asm",    'a', NULL,      0, "create output for re-assembling" },
     { "base",   'b', "address", 0, "base address to load subsequent files at" },
     { "hunk",   'h', NULL,      0, "following files are in CINTCODE hunk format" },
     { "labels", 'l', "file",    0, "file of labels" },

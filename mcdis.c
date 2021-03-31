@@ -280,8 +280,10 @@ unsigned mc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, 
     unsigned usetype;
 
     do {
-        fprintf(ofp, "%04X: ", addr);
-        prt_bytes(ofp, content, addr);
+        if (!asm_mode) {
+            fprintf(ofp, "%04X: ", addr);
+            prt_bytes(ofp, content, addr);
+        }
         print_label(ofp, addr);
         addr = prt_mnemonics(ofp, content, addr);
         usetype = loc_index[addr] & LOC_USETYPE;

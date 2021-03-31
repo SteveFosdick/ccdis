@@ -86,7 +86,8 @@ unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsi
         char *hptr = line + 8;
         char *aptr = hptr + 48;
 
-        fprintf(ofp, "%04X:          ", addr);
+        if (!asm_mode)
+            fprintf(ofp, "%04X:          ", addr);
         print_label(ofp, addr);
 
         memcpy(line, "DB      ", 8);

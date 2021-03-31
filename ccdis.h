@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern bool asm_mode;
+
 #define LOC_CINTCODE 0x4000
 #define LOC_M6502    0x8000
 #define LOC_DATA     0xc000

@@ -223,11 +223,13 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, 
         opent = cintcode_ops + b1;
         switch(opent->cc_am) {
             case CAM_IMP:
-                fprintf(ofp, "%04X: %02X       ", oppos, b1);
+                if (!asm_mode)
+                    fprintf(ofp, "%04X: %02X       ", oppos, b1);
                 break;
             case CAM_SWB:
             case CAM_SWL:
-                fprintf(ofp, "%04X: %02X ...   ", oppos, b1);
+                if (!asm_mode)
+                    fprintf(ofp, "%04X: %02X ...   ", oppos, b1);
                 break;
             case CAM_BYTE:
             case CAM_BREL:
@@ -237,14 +239,16 @@ unsigned cc_disassemble(FILE *ofp, const unsigned char *content, unsigned addr, 
             case CAM_GLB2:
                 if (addr < max_addr) {
                     b2 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X    ", oppos, b1, b2);
+                    if (!asm_mode)
+                        fprintf(ofp, "%04X: %02X %02X    ", oppos, b1, b2);
                 }
                 break;
             case CAM_WORD:
                 if ((addr + 1) < max_addr) {
                     b2 = content[addr++];
                     b3 = content[addr++];
-                    fprintf(ofp, "%04X: %02X %02X %02X ", oppos, b1, b2, b3);
+                    if (!asm_mode)
+                        fprintf(ofp, "%04X: %02X %02X %02X ", oppos, b1, b2, b3);
                 }
         }
 
