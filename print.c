@@ -182,7 +182,7 @@ unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsi
         uint8_t val = content[taddr++];
         size_t size = fprintf(ofp, pf_current->byte, val);
         for (int i = 0; i < (DATA_COLS-1) && taddr < max_addr; i++) {
-            if (loc_index[addr] & LOC_USETYPE) {
+            if (loc_index[taddr] & LOC_USETYPE) {
                 size += 2;
                 while (++i < DATA_COLS)
                     fwrite(spaces, size, 1, ofp);
