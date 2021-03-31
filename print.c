@@ -1,6 +1,8 @@
 #include "ccdis.h"
 #include "cintcode_tabs.h"
 
+#define DATA_COLS 8
+
 const print_cfg pf_orig = {
     .lab  = "%s:",
     .byte = "$%02x",
@@ -164,40 +166,42 @@ void print_dest_addr(FILE *ofp, unsigned addr)
     putc('\n', ofp);
 }
 
-static const char xdigs[16] = "0123456789ABCDEF";
-
 unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
+    size_t len = strlen(pf_current->data);
+    char spaces[8];
+    memset(spaces, ' ', sizeof(spaces));
     do {
-        char line[80];
-        char *hptr = line + 8;
-        char *aptr = hptr + 48;
-
         if (!asm_mode)
             fprintf(ofp, "%04X:          ", addr);
         print_label(ofp, addr);
+        fwrite(pf_current->data, len, 1, ofp);
+        fwrite(spaces, 8-len, 1, ofp);
 
-        memcpy(line, "DB      ", 8);
-        *aptr++ = ';';
-        *aptr++ = ' ';
-
-        for (int i = 0; i < 16 && addr < max_addr; i++) {
-            uint8_t val = content[addr++];
-            *hptr++ = xdigs[val >> 4];
-            *hptr++ = xdigs[val & 0x0f];
-            *hptr++ = ' ';
-            *aptr++ = (val >= 0x20 && val <= 0x7e) ? val : '.';
+        unsigned taddr = addr;
+        uint8_t val = content[taddr++];
+        size_t size = fprintf(ofp, pf_current->byte, val);
+        for (int i = 0; i < (DATA_COLS-1) && taddr < max_addr; i++) {
             if (loc_index[addr] & LOC_USETYPE) {
-                while (++i < 16) {
-                    *hptr++ = ' ';
-                    *hptr++ = ' ';
-                    *hptr++ = ' ';
-                }
+                size += 2;
+                while (++i < DATA_COLS)
+                    fwrite(spaces, size, 1, ofp);
                 break;
             }
+            uint8_t val = content[taddr++];
+            fwrite(", ", 2, 1, ofp);
+            fprintf(ofp, pf_current->byte, val);
         }
-        *aptr++ = '\n';
-        fwrite(line, aptr-line, 1, ofp);
+        fputs(" ; ", ofp);
+        for (int i = 0; i < DATA_COLS && addr < max_addr; i++) {
+            uint8_t val = content[addr++];
+            if (val < 0x20 || val > 0x7e)
+                val = '.';
+            putc(val, ofp);
+            if (loc_index[addr] & LOC_USETYPE)
+                break;
+        }
+        putc('\n', ofp);
     }
     while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
     return addr;
