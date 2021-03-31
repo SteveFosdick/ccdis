@@ -66,6 +66,7 @@ extern const print_cfg pf_ca65;
 extern const print_cfg *pf_current;
 
 extern void print_label(FILE *ofp, unsigned addr);
+extern void print_asm_hdr(FILE *ofp, unsigned start_addr, unsigned size);
 extern void print_dest_addr_nonl(FILE *ofp, unsigned addr);
 extern void print_dest_addr(FILE *ofp, unsigned addr);
 extern unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);

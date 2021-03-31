@@ -7,8 +7,8 @@ const print_cfg pf_orig = {
     .word = "$%04x",
     .imm  = "#$%02x",
     .acc  = "",
-    .equ  = "%s\t.equ\t",
-    .org  = "\t.org\t",
+    .equ  = ".equ",
+    .org  = ".org",
     .data = ".byte"
 };
 
@@ -17,9 +17,9 @@ const print_cfg pf_beebasm = {
     .byte = "&%02X",
     .word = "&%04X",
     .imm  = "#&%02X",
-    .acc  = "\tA",
-    .equ  = "%s\t=\t",
-    .org  = "\tORG\t",
+    .acc  = "A",
+    .equ  = "=",
+    .org  = "ORG",
     .data = "EQUB"
 };
 
@@ -29,8 +29,8 @@ const print_cfg pf_lancs = {
     .word = "$%04X",
     .imm  = "#$%02X",
     .acc  = "",
-    .equ  = "%s\tEQU\t",
-    .org  = "\tORG\t",
+    .equ  = "EQU",
+    .org  = "ORG",
     .data = "DFB"
 };
 
@@ -40,8 +40,8 @@ const print_cfg pf_ca65 = {
     .word = "$%04X",
     .imm  = "#$%02X",
     .acc  = "",
-    .equ  = "%s\t=\t",
-    .org  = "\t.org\t",
+    .equ  = "=",
+    .org  = ".org",
     .data = ".byte"
 };
 
@@ -88,6 +88,40 @@ void print_label(FILE *ofp, unsigned addr)
     if (size < label_width)
         memset(label+size, ' ', label_width-size);
     fwrite(label, label_width, 1, ofp);
+}
+
+void print_asm_hdr(FILE *ofp, unsigned start_addr, unsigned size)
+{
+    char spaces[MAX_LABEL_LEN];
+    memset(spaces, ' ', label_width);
+    fwrite(spaces, label_width, 1, ofp);
+    size_t len = strlen(pf_current->org);
+    fwrite(pf_current->org, len, 1, ofp);
+    fwrite(spaces, 8-len, 1, ofp);
+    fprintf(ofp, pf_current->word, start_addr);
+    putc('\n', ofp);
+
+    unsigned end_addr = start_addr + size;
+    label_entry *ptr = label_entries;
+    label_entry *end = ptr + label_entries_used;
+    len = strlen(pf_current->equ);
+    while (ptr < end) {
+        if (ptr->addr < start_addr || ptr->addr > end_addr) {
+            unsigned lnum = ptr->indx & LOC_GLOBMASK;
+            if (lnum < label_names_used) {
+                const char *lname = label_names[lnum];
+                size_t lsize = strlen(lname);
+                fwrite(lname, lsize, 1, ofp);
+                if (lsize < label_width)
+                    fwrite(spaces, label_width - lsize, 1, ofp);
+                fwrite(pf_current->equ, len, 1, ofp);
+                fwrite(spaces, 8-len, 1, ofp);
+                fprintf(ofp, pf_current->word, ptr->addr);
+                putc('\n', ofp);
+            }
+        }
+        ptr++;
+    }
 }
 
 void print_dest_addr_nonl(FILE *ofp, unsigned addr)

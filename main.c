@@ -53,6 +53,11 @@ static int disassemble(FILE *ofp, const unsigned char *content, unsigned start_a
     }
     while (new_labels > 0);
 
+    // Defines for an assembler.
+
+    if (asm_mode)
+        print_asm_hdr(ofp, start_addr, size);
+
     // Now go back and disassemble */
 
     for (unsigned addr = start_addr; addr < max_addr; ) {
