@@ -121,12 +121,15 @@ unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned add
                 addr += 2;
                 break;
             case ABS:
-                b2 = content[addr++];
-                b3 = content[addr++];
-                if (b1 == 0x4c) {
+                if (b1 == 0x20 || b1 == 0x4c) {
+                    b2 = content[addr++];
+                    b3 = content[addr++];
                     dest = ((b3 << 8) | b2);
-                    ujump = 1;
+                    if (b1 == 0x4c)
+                        ujump = 1;
                 }
+                else
+                    addr += 2;
                 break;
             case PCR:
                 r = *(signed char *)(content + addr++);
