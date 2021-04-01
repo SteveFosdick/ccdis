@@ -91,6 +91,7 @@ static const uint8_t am_cmos[256]=
 unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels)
 {
     int ujump = 0;
+    unsigned usetype;
     do {
         int dest = max_addr;
         int r;
@@ -100,7 +101,7 @@ unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned add
             break;
         switch(am_cmos[b1]) {
             case IMP:
-                if (b1 == 0x60)
+                if (b1 == 0 || b1 == 0x60)
                     ujump = 1;
             case IMPA:
                 break;
@@ -144,8 +145,9 @@ unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned add
                 (*new_labels)++;
             }
         }
+        usetype = loc_index[addr] & LOC_USETYPE;
     }
-    while (addr < max_addr && !ujump);
+    while (addr < max_addr && !ujump && (usetype == 0 || usetype == LOC_M6502));
 
     return addr;
 }
