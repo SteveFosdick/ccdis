@@ -94,6 +94,7 @@ unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned add
     unsigned usetype;
     do {
         int dest = max_addr;
+        bool code_dest = false;
         int r;
         unsigned b2, b3;
         unsigned b1 = content[addr++];
@@ -116,34 +117,44 @@ unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned add
                 break;
             case ABSX:
             case ABSY:
+                b2 = content[addr++];
+                b3 = content[addr++];
+                dest = ((b3 << 8) | b2);
+                break;
             case IND16:
             case IND1X:
                 addr += 2;
                 break;
             case ABS:
-                if (b1 == 0x20 || b1 == 0x4c) {
-                    b2 = content[addr++];
-                    b3 = content[addr++];
-                    dest = ((b3 << 8) | b2);
-                    if (b1 == 0x4c)
-                        ujump = 1;
+                b2 = content[addr++];
+                b3 = content[addr++];
+                dest = ((b3 << 8) | b2);
+                if (b1 == 0x20)
+                    code_dest = true;
+                else if (b1 == 0x4c) {
+                    code_dest = true;
+                    ujump = 1;
                 }
-                else
-                    addr += 2;
                 break;
             case PCR:
                 r = *(signed char *)(content + addr++);
                 dest = addr + r;
+                code_dest = true;
                 if (b1 == 0x80)
                     ujump = 1;
         }
         if (dest >= base_addr && dest < max_addr) {
             unsigned loc = loc_index[dest];
             unsigned usetype = loc & LOC_USETYPE;
-            if (usetype == 0 || usetype == LOC_DATA) {
+            if (code_dest && (usetype == 0 || usetype == LOC_DATA)) {
                 loc = (loc & ~LOC_USETYPE) | LOC_M6502;
                 if (b1 == 0x20)
                     loc |= LOC_CALL;
+                loc_index[dest] = loc;
+                (*new_labels)++;
+            }
+            else if (usetype == 0) {
+                loc = (loc & ~LOC_USETYPE) | LOC_DATA;
                 loc_index[dest] = loc;
                 (*new_labels)++;
             }
