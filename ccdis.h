@@ -63,7 +63,7 @@ typedef struct {
     const char org[8];
     const char dfb[8];
     const char dfw[8];
-    const char str[8];
+    unsigned (*str)(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 } print_cfg;
 
 extern const print_cfg pf_beebasm;

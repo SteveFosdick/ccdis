@@ -3,6 +3,10 @@
 
 #define DATA_COLS 8
 
+static unsigned print_str_default(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
+static unsigned print_str_beebasm(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
+static unsigned print_str_lancs(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
+
 const print_cfg pf_orig = {
     .lab  = "%s:",
     .byte = "$%02x",
@@ -13,7 +17,7 @@ const print_cfg pf_orig = {
     .org  = ".org",
     .dfb  = ".byte",
     .dfw  = ".word",
-    .str  = ".byte"
+    .str  = print_str_default
 };
 
 const print_cfg pf_beebasm = {
@@ -26,7 +30,7 @@ const print_cfg pf_beebasm = {
     .org  = "ORG",
     .dfb  = "EQUB",
     .dfw  = "EQUW",
-    .str  = "EQUS"
+    .str  = print_str_beebasm
 };
 
 const print_cfg pf_lancs = {
@@ -39,7 +43,7 @@ const print_cfg pf_lancs = {
     .org  = "ORG",
     .dfb  = "DFB",
     .dfw  = "DFW",
-    .str  = "ASC"
+    .str  = print_str_lancs
 };
 
 const print_cfg pf_ca65 = {
@@ -52,7 +56,7 @@ const print_cfg pf_ca65 = {
     .org  = ".org",
     .dfb  = ".byte",
     .dfw  = ".word",
-    .str  = ".byte"
+    .str  = print_str_default
 };
 
 const print_cfg *pf_current = &pf_orig;
@@ -180,10 +184,9 @@ enum str_state {
     SS_BYTES
 };
 
-static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+static unsigned print_str_common(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr, const char *str, size_t str_len)
 {
     size_t dfb_len = strlen(pf_current->dfb);
-    size_t str_len = strlen(pf_current->str);
     char spaces[8];
     memset(spaces, ' ', sizeof(spaces));
     enum str_state state = SS_START;
@@ -198,7 +201,7 @@ static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned a
                     if (!asm_mode)
                         fprintf(ofp, "%04X:          ", addr);
                     print_label(ofp, addr);
-                    fwrite(pf_current->str, str_len, 1, ofp);
+                    fwrite(str, str_len, 1, ofp);
                     fwrite(spaces, 8-str_len, 1, ofp);
                     putc('"', ofp);
                     state = SS_INSTR;
@@ -238,6 +241,134 @@ static unsigned print_string(FILE *ofp, const unsigned char *content, unsigned a
         case SS_BYTES:
             putc('\n', ofp);
     }
+    return addr;
+}
+
+static unsigned print_str_default(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    return print_str_common(ofp, content, addr, max_addr, ".byte", 5);
+}
+
+static unsigned print_str_beebasm(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    return print_str_common(ofp, content, addr, max_addr, "EQUS", 4);
+}
+
+static unsigned lancs_string(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr, const char *spaces, int quote)
+{
+    bool crterm = false;
+    unsigned size = max_addr - addr;
+    for (unsigned taddr = addr; taddr < max_addr; ) {
+        uint8_t val = content[taddr++];
+        if (val < ' ' || val >= 0xa0 || val == '|' || val == '^')
+            size++;
+    }
+    if (size > 80) {
+        fwrite("ASC", 3, 1, ofp);
+        fwrite(spaces, 8-3, 1, ofp);
+    }
+    else if (content[addr] == (max_addr-addr)) {
+        if (content[max_addr-1] == 0x0d) {
+            fwrite("CSTR", 4, 1, ofp);
+            max_addr--;
+            crterm = true;
+        }
+        else
+            fwrite("CASC", 4, 1, ofp);
+        addr++;
+        fwrite(spaces, 8-4, 1, ofp);
+    }
+    else {
+        if (content[max_addr-1] == 0x0d) {
+            fwrite("STR", 3, 1, ofp);
+            max_addr--;
+            crterm = true;
+        }
+        else
+            fwrite("ASC", 3, 1, ofp);
+        fwrite(spaces, 8-3, 1, ofp);
+    }
+    putc(quote, ofp);
+    unsigned posn = 0;
+    do {
+        uint8_t val = content[addr++];
+        if (val < ' ') {
+            putc('|', ofp);
+            putc(val + '@', ofp);
+            posn += 2;
+        }
+        else if (val >= 0xa0) {
+            putc('^', ofp);
+            putc(val & 0x7f, ofp);
+            posn += 2;
+        }
+        else {
+            if (val == '|' || val == '^') {
+                putc(val, ofp);
+                posn++;
+            }
+            putc(val, ofp);
+            posn++;
+        }
+    } while (addr < max_addr && posn <= 80);
+    putc(quote, ofp);
+    putc('\n', ofp);
+    if (crterm)
+        addr++;
+    return addr;
+}
+
+static unsigned print_str_lancs(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    char spaces[8];
+    memset(spaces, ' ', sizeof(spaces));
+
+    uint8_t val = content[addr];
+    do {
+        if (!asm_mode)
+            fprintf(ofp, "%04X:          ", addr);
+        print_label(ofp, addr);
+        if (val >= ' ' && val < 0x7f) {
+            unsigned taddr = addr;
+            unsigned quote_sing = 0;
+            unsigned quote_doub = 0;
+            do {
+                if (val == '"') {
+                    if (!quote_doub)
+                        quote_doub = taddr;
+                }
+                else if (val == '\'') {
+                    if (!quote_sing)
+                        quote_sing = taddr;
+                }
+                val = content[++taddr];
+            }
+            while ((val < 0x7f || (val >= 0xa0 && val < 0xff)) && taddr < max_addr && !(loc_index[taddr] & LOC_USETYPE));
+            if (!quote_doub)
+                addr = lancs_string(ofp, content, addr, taddr, spaces, '"');
+            else if (!quote_sing)
+                addr = lancs_string(ofp, content, addr, taddr, spaces, '\'');
+            else if (quote_sing < quote_doub)
+                addr = lancs_string(ofp, content, addr, quote_doub, spaces, '"');
+            else
+                addr = lancs_string(ofp, content, addr, quote_sing, spaces, '\'');
+            val = content[addr];
+        }
+        else {
+            fwrite(pf_current->dfb, 3, 1, ofp);
+            fwrite(spaces, 8-3, 1, ofp);
+            fprintf(ofp, pf_current->byte, val);
+            while (++addr < max_addr && !(loc_index[addr] & LOC_USETYPE)) {
+                val = content[addr];
+                if (val >= ' ' && val < 0x7f)
+                    break;
+                putc(',', ofp);
+                fprintf(ofp, pf_current->byte, val);
+            }
+            putc('\n', ofp);
+        }
+    }
+    while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
     return addr;
 }
 
@@ -314,7 +445,7 @@ unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsi
 {
     unsigned loc_use = loc_index[addr];
     if (loc_use & LOC_STRING)
-        return print_string(ofp, content, addr, max_addr);
+        return pf_current->str(ofp, content, addr, max_addr);
     else if (loc_use & LOC_WORD)
         return print_words(ofp, content, addr, max_addr);
     else
