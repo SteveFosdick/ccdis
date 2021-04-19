@@ -59,6 +59,19 @@ const print_cfg pf_ca65 = {
     .str  = print_str_default
 };
 
+const print_cfg pf_tpasm = {
+    .lab  = "%s:",
+    .byte = "$%02X",
+    .word = "$%04X",
+    .imm  = "#$%02X",
+    .acc  = "",
+    .equ  = ".equ",
+    .org  = ".org",
+    .dfb  = "db",
+    .dfw  = "dw",
+    .str  = print_str_default
+};
+
 const print_cfg *pf_current = &pf_orig;
 unsigned label_width = MAX_LABEL_LEN;
 
@@ -246,7 +259,7 @@ static unsigned print_str_common(FILE *ofp, const unsigned char *content, unsign
 
 static unsigned print_str_default(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
-    return print_str_common(ofp, content, addr, max_addr, ".byte", 5);
+    return print_str_common(ofp, content, addr, max_addr, pf_current->dfb, strlen(pf_current->dfb));
 }
 
 static unsigned print_str_beebasm(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)

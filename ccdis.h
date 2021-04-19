@@ -69,6 +69,7 @@ typedef struct {
 extern const print_cfg pf_beebasm;
 extern const print_cfg pf_lancs;
 extern const print_cfg pf_ca65;
+extern const print_cfg pf_tpasm;
 extern const print_cfg *pf_current;
 
 extern void print_label(FILE *ofp, unsigned addr);

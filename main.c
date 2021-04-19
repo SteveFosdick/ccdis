@@ -254,6 +254,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case 'L':
             pf_current = &pf_lancs;
             break;
+        case 'T':
+            pf_current = &pf_tpasm;
+            break;
         case ARGP_KEY_ARG:
             process_file(stdout, arg);
             break;
@@ -275,6 +278,7 @@ static const struct argp_option opts[] = {
     { "beebasm",'B', NULL,      0, "generate output for BeebAsm" },
     { "ca65",   'C', NULL,      0, "generate output for ca65" },
     { "lancs",  'L', NULL,      0, "generate output for Lancaster assembler" },
+    { "tpasm",  'T', NULL,      0, "generate output for tpasm assembler" },
     { 0 }
 };
 
