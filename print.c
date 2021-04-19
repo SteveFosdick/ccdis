@@ -75,6 +75,16 @@ const print_cfg pf_tpasm = {
 const print_cfg *pf_current = &pf_orig;
 unsigned label_width = MAX_LABEL_LEN;
 
+void print_spaces(const char *spaces, int count, FILE *ofp)
+{
+    while (count >= MAX_LABEL_LEN) {
+        fwrite(spaces, MAX_LABEL_LEN, 1, ofp);
+        count -= MAX_LABEL_LEN;
+    }
+    if (count > 0)
+        fwrite(spaces, count, 1, ofp);
+}
+
 void print_label(FILE *ofp, unsigned addr)
 {
     char label[MAX_LABEL_LEN+1];
@@ -112,16 +122,16 @@ void print_label(FILE *ofp, unsigned addr)
             }
         }
     }
-    if (size < label_width)
-        memset(label+size, ' ', label_width-size);
-    fwrite(label, label_width, 1, ofp);
+    fwrite(label, size, 1, ofp);
+    memset(label, ' ', MAX_LABEL_LEN);
+    print_spaces(label, label_width - size, ofp);
 }
 
 void print_asm_hdr(FILE *ofp, unsigned start_addr, unsigned size)
 {
     char spaces[MAX_LABEL_LEN];
-    memset(spaces, ' ', label_width);
-    fwrite(spaces, label_width, 1, ofp);
+    memset(spaces, ' ', MAX_LABEL_LEN);
+    print_spaces(spaces, label_width, ofp);
     size_t len = strlen(pf_current->org);
     fwrite(pf_current->org, len, 1, ofp);
     fwrite(spaces, 8-len, 1, ofp);

@@ -245,6 +245,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case 's':
             file_func = simple_file;
             break;
+        case 'w':
+            label_width = atoi(arg);
+            break;
         case 'B':
             pf_current = &pf_beebasm;
             break;
