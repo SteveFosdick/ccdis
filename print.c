@@ -43,6 +43,7 @@ const print_cfg pf_lancs = {
     .org  = "ORG",
     .dfb  = "DFB",
     .dfw  = "DFW",
+    .ddb  = "DDB",
     .str  = print_str_lancs
 };
 
@@ -56,6 +57,7 @@ const print_cfg pf_ca65 = {
     .org  = ".org",
     .dfb  = ".byte",
     .dfw  = ".word",
+    .ddb  = ".dbyt",
     .str  = print_str_default
 };
 
@@ -96,7 +98,7 @@ void print_label(FILE *ofp, unsigned addr)
             if (glob < CINTCODE_NGLOB)
                 size = snprintf(label, sizeof(label), pf_current->lab, cintocde_globs[glob]);
             else {
-                char globtxt[6];
+                char globtxt[7];
                 snprintf(globtxt, sizeof(globtxt), "G%03d", glob);
                 size = snprintf(label, sizeof(label), pf_current->lab, globtxt);
             }
@@ -201,6 +203,8 @@ void print_dest_addr(FILE *ofp, unsigned addr)
     putc('\n', ofp);
 }
 
+static const char spaces[8] = "        ";
+
 enum str_state {
     SS_START,
     SS_INSTR,
@@ -210,8 +214,6 @@ enum str_state {
 static unsigned print_str_common(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr, const char *str, size_t str_len)
 {
     size_t dfb_len = strlen(pf_current->dfb);
-    char spaces[8];
-    memset(spaces, ' ', sizeof(spaces));
     enum str_state state = SS_START;
     do {
         uint8_t val = content[addr];
@@ -426,8 +428,6 @@ static unsigned print_words(FILE *ofp, const unsigned char *content, unsigned ad
 static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
     size_t dfb_len = strlen(pf_current->dfb);
-    char spaces[8];
-    memset(spaces, ' ', sizeof(spaces));
     do {
         if (!asm_mode)
             fprintf(ofp, "%04X:          ", addr);
@@ -464,6 +464,34 @@ static unsigned print_bytes(FILE *ofp, const unsigned char *content, unsigned ad
     return addr;
 }
 
+static unsigned print_dbytes(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
+{
+    if (!pf_current->ddb[0])
+        return print_bytes(ofp, content, addr, max_addr);
+    size_t ddb_len = strlen(pf_current->ddb);
+    do {
+        if (!asm_mode)
+            fprintf(ofp, "%04X:          ", addr);
+        print_label(ofp, addr);
+        uint16_t val = content[addr++] << 8;
+        val |= (content[addr++]);
+        fwrite(pf_current->ddb, ddb_len, 1, ofp);
+        fwrite(spaces, 8-ddb_len, 1, ofp);
+        print_dest_addr_nonl(ofp, val);
+        for (int i = 0; i < (DATA_COLS-1) && addr < max_addr; i++) {
+            if (loc_index[addr] & LOC_USETYPE)
+                break;
+            val = content[addr++] << 8;
+            val |= (content[addr++]);
+            fwrite(", ", 2, 1, ofp);
+            print_dest_addr_nonl(ofp, val);
+        }
+        putc('\n', ofp);
+    }
+    while (addr < max_addr && !(loc_index[addr] & LOC_USETYPE));
+    return addr;
+}
+
 unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr)
 {
     unsigned loc_use = loc_index[addr];
@@ -471,6 +499,8 @@ unsigned print_data(FILE *ofp, const unsigned char *content, unsigned addr, unsi
         return pf_current->str(ofp, content, addr, max_addr);
     else if (loc_use & LOC_WORD)
         return print_words(ofp, content, addr, max_addr);
+    else if (loc_use & LOC_DBYTE)
+        return print_dbytes(ofp, content, addr, max_addr);
     else
         return print_bytes(ofp, content, addr, max_addr);
 }

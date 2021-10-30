@@ -61,6 +61,8 @@ static int one_label(const char *fn, unsigned line_no, char *line)
         flags = LOC_DATA|LOC_LABEL;
     else if (!strcasecmp(op, "word"))
         flags = LOC_DATA|LOC_LABEL|LOC_WORD;
+    else if (!strcasecmp(op, "dbyte"))
+        flags = LOC_DATA|LOC_LABEL|LOC_DBYTE;
     else if (!strcasecmp(op, "string"))
         flags = LOC_DATA|LOC_LABEL|LOC_STRING;
     else {
@@ -94,7 +96,7 @@ static int one_label(const char *fn, unsigned line_no, char *line)
     else {
         size_t len = strlen(value);
         if (len > MAX_LABEL_LEN) {
-            error_at_line(0, errno, fn, line_no, "label '%s' is too long", value);
+            error_at_line(0, errno, fn, line_no, "label '%s' (len %ld, max %d) is too long", value, len, MAX_LABEL_LEN);
             return EINVAL;
         }
         if (label_names_used >= label_names_alloc) {

@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 bool asm_mode = false;
-uint16_t loc_index[MAX_FILE_SIZE];
+uint32_t loc_index[MAX_FILE_SIZE];
 unsigned char content[MAX_FILE_SIZE+1];
 unsigned base_addr = 0;
 static bool rom_flag = false;

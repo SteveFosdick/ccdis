@@ -9,35 +9,36 @@
 
 extern bool asm_mode;
 
-#define LOC_CINTCODE 0x4000
-#define LOC_M6502    0x8000
-#define LOC_DATA     0xc000
+#define LOC_CINTCODE 0x400000
+#define LOC_M6502    0x800000
+#define LOC_DATA     0xc00000
 
-#define LOC_USETYPE  0xc000
+#define LOC_USETYPE  0xc00000
 
-#define LOC_CALL     0x2000
+#define LOC_CALL     0x200000
 
-#define LOC_STRING   0x2000
-#define LOC_WORD     0x1000
+#define LOC_STRING   0x100000
+#define LOC_WORD     0x080000
+#define LOC_DBYTE    0x040000
 
-#define LOC_GLOBAL   0x0800
-#define LOC_LABEL    0x0400
+#define LOC_GLOBAL   0x020000
+#define LOC_LABEL    0x010000
 
-#define LOC_GLOBMASK 0x03ff
+#define LOC_GLOBMASK 0x00ffff
 
 #define MAX_FILE_SIZE 0x10000
 #define MAX_GLOB_NO   0x02ff
 
 typedef struct {
     uint16_t addr;
-    uint16_t indx;
+    uint32_t indx;
 } label_entry;
 
 extern label_entry *label_entries;
 extern size_t label_entries_used;
 extern unsigned label_width;
 
-#define MAX_LABEL_LEN 15
+#define MAX_LABEL_LEN 23
 
 extern char (*label_names)[MAX_LABEL_LEN+1];
 extern size_t label_names_used;
@@ -45,7 +46,7 @@ extern size_t label_names_used;
 extern void labels_apply(void);
 extern int labels_load(const char *fn);
 
-extern uint16_t loc_index[MAX_FILE_SIZE];
+extern uint32_t loc_index[MAX_FILE_SIZE];
 
 extern unsigned cc_trace(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels);
 extern unsigned mc_trace(const unsigned char *content, unsigned base_addr, unsigned addr, unsigned max_addr, unsigned *new_labels);
@@ -63,6 +64,7 @@ typedef struct {
     const char org[8];
     const char dfb[8];
     const char dfw[8];
+    const char ddb[8];
     unsigned (*str)(FILE *ofp, const unsigned char *content, unsigned addr, unsigned max_addr);
 } print_cfg;
 

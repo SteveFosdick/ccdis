@@ -5,7 +5,7 @@
 
 typedef struct {
     uint16_t romaddr;
-    uint16_t locindx;
+    uint32_t locindx;
 } rom_entry;
 
 #define ROM_TAB_SIZE 92
